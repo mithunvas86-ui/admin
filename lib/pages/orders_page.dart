@@ -71,9 +71,9 @@ class _OrdersPageState extends State<OrdersPage> {
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
                 elevation: 0,
-                shape: RoundedRectangleBorder(
+                shape: const RoundedRectangleBorder(
                   borderRadius: BorderRadius.zero,
-                  side: const BorderSide(color: Colors.black, width: 2),
+                  side: BorderSide(color: Colors.black, width: 2),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(12),
