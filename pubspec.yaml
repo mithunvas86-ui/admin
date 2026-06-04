@@ -1,0 +1,58 @@
+name: mpro_dining_admin
+description: "M·PROTI Dining Admin — Supabase Authentication"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Supabase backend
+  supabase_flutter: ^2.5.0
+
+  # Navigation
+  go_router: ^14.2.0
+
+  # State management
+  provider: ^6.1.2
+
+  # Environment variables
+  flutter_dotenv: ^5.1.0
+
+  # Fonts
+  google_fonts: ^6.2.1
+
+  # Local storage
+  shared_preferences: ^2.2.2
+
+  # Images
+  cached_network_image: ^3.3.1
+
+  # Image picker for menu item photos
+  image_picker: ^1.1.2
+
+  # Charts for analytics
+  fl_chart: ^0.69.0
+
+  # Date/time formatting
+  intl: ^0.20.2
+
+  # File path utilities
+  path: ^1.9.0
+
+  # Icons
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/logo.png
