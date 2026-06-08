@@ -108,21 +108,26 @@ class _OrdersPageState extends State<OrdersPage> {
                             value: status,
                             items: [
                               'pending',
-                              'preparing',
                               'confirmed',
-                              'completed'
+                              'preparing',
+                              'ready',
+                              'completed',
+                              'cancelled',
                             ]
                                 .map((s) => DropdownMenuItem(
                                       value: s,
                                       child: Text(s.toUpperCase()),
                                     ))
                                 .toList(),
-                            onChanged: (newStatus) {
-                              if (newStatus != null && newStatus != status) {
-                                provider.updateOrderStatus(
-                                    order['id'], newStatus);
-                              }
-                            },
+                            onChanged: status == 'cancelled'
+                                ? null
+                                : (newStatus) {
+                                    if (newStatus != null &&
+                                        newStatus != status) {
+                                      provider.updateOrderStatus(
+                                          order['id'], newStatus);
+                                    }
+                                  },
                           ),
                         ],
                       ),
