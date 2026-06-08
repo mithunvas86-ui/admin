@@ -62,7 +62,8 @@ class AdminMenuProvider extends ChangeNotifier {
           .from(SupabaseService.tableMenuItems)
           .select()
           .order('category');
-      _items = (response as List).map((json) => MenuItem.fromJson(json)).toList();
+      _items =
+          (response as List).map((json) => MenuItem.fromJson(json)).toList();
     } catch (_) {}
     _isLoading = false;
     notifyListeners();
@@ -75,6 +76,14 @@ class AdminMenuProvider extends ChangeNotifier {
     String? description,
     String? badge,
     dynamic imageFile,
+    bool available = true,
+    int kcal = 0,
+    String servingSize = '',
+    double protein = 0,
+    double carbs = 0,
+    double fat = 0,
+    double fiber = 0,
+    int? dailyLimit,
   }) async {
     String? imageUrl;
     if (imageFile != null &&
@@ -91,7 +100,16 @@ class AdminMenuProvider extends ChangeNotifier {
       'category': category,
       'description': description ?? '',
       'image_url': imageUrl,
-      'available': true,
+      'available': available,
+      'kcal': kcal,
+      'serving_size': servingSize,
+      'protein': protein,
+      'carbs': carbs,
+      'fat': fat,
+      'fiber': fiber,
+      if (dailyLimit != null && dailyLimit > 0) 'daily_limit': dailyLimit,
+      'orders_today': 0,
+      'last_reset_date': '',
       if (badge != null && badge.isNotEmpty) 'badge': badge,
     });
     await fetchAll();
@@ -105,6 +123,15 @@ class AdminMenuProvider extends ChangeNotifier {
     String? category,
     String? badge,
     dynamic imageFile,
+    bool? available,
+    int? kcal,
+    String? servingSize,
+    double? protein,
+    double? carbs,
+    double? fat,
+    double? fiber,
+    int? dailyLimit,
+    bool clearDailyLimit = false,
   }) async {
     final updateData = <String, dynamic>{
       'name': name,
@@ -112,6 +139,15 @@ class AdminMenuProvider extends ChangeNotifier {
       if (description != null) 'description': description,
       if (category != null) 'category': category,
       'badge': (badge != null && badge.isNotEmpty) ? badge : null,
+      if (available != null) 'available': available,
+      if (kcal != null) 'kcal': kcal,
+      if (servingSize != null) 'serving_size': servingSize,
+      if (protein != null) 'protein': protein,
+      if (carbs != null) 'carbs': carbs,
+      if (fat != null) 'fat': fat,
+      if (fiber != null) 'fiber': fiber,
+      'daily_limit':
+          clearDailyLimit ? null : (dailyLimit != null && dailyLimit > 0 ? dailyLimit : null),
     };
 
     if (imageFile != null &&
@@ -128,6 +164,16 @@ class AdminMenuProvider extends ChangeNotifier {
         .update(updateData)
         .eq('id', itemId);
     await fetchAll();
+  }
+
+  Future<void> resetTodayCount(String itemId) async {
+    try {
+      await SupabaseService.client
+          .from(SupabaseService.tableMenuItems)
+          .update({'orders_today': 0, 'available': true})
+          .eq('id', itemId);
+      await fetchAll();
+    } catch (_) {}
   }
 
   Future<String> _uploadImage(dynamic imageFile) async {
