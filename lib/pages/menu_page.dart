@@ -232,6 +232,17 @@ class _MenuItemCard extends StatelessWidget {
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                IconButton(
+                  tooltip: item.featured
+                      ? 'Featured on the menu hero'
+                      : 'Set as Featured Creation',
+                  icon: Icon(
+                    item.featured ? Icons.star : Icons.star_border,
+                    color: item.featured ? Colors.amber.shade700 : Colors.grey,
+                  ),
+                  onPressed: () =>
+                      provider.setFeatured(item.id, !item.featured),
+                ),
                 Switch(
                   value: item.available,
                   onChanged: (val) =>

@@ -215,6 +215,28 @@ class AdminMenuProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
+  /// Sets the "Featured Creation" shown on the customer menu hero.
+  /// Only one item can be featured at a time, so selecting one clears any
+  /// previously featured dish. Pass [featured] = false to clear it.
+  Future<void> setFeatured(String itemId, bool featured) async {
+    try {
+      if (featured) {
+        // Clear the currently featured item (if any).
+        await SupabaseService.client
+            .from(SupabaseService.tableMenuItems)
+            .update({'featured': false})
+            .eq('featured', true);
+      }
+      await SupabaseService.client
+          .from(SupabaseService.tableMenuItems)
+          .update({'featured': featured})
+          .eq('id', itemId);
+      await fetchAll();
+    } catch (e) {
+      debugPrint('setFeatured error: $e');
+    }
+  }
+
   Future<void> deleteItem(String itemId) async {
     try {
       await SupabaseService.client
