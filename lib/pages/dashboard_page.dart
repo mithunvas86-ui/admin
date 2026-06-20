@@ -130,43 +130,7 @@ class _DashboardPageState extends State<DashboardPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('DASHBOARD', style: GoogleFonts.chivo(fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
-            const SizedBox(height: 12),
-
-            // TEMP diagnostic banner — shows real auth state + any query error.
-            Consumer<AdminOrdersProvider>(
-              builder: (context, provider, _) {
-                final ok = provider.authStatus.startsWith('signed in') &&
-                    provider.lastError == null;
-                return Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: ok ? Colors.green.shade50 : Colors.red.shade50,
-                    border: Border.all(
-                        color: ok ? Colors.green : Colors.red, width: 1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('AUTH: ${provider.authStatus}',
-                          style: GoogleFonts.chivo(
-                              fontSize: 12, fontWeight: FontWeight.w700)),
-                      Text('is_admin() RPC: ${provider.isAdminCheck}',
-                          style: GoogleFonts.chivo(
-                              fontSize: 12, fontWeight: FontWeight.w700)),
-                      Text('Orders loaded: ${provider.orders.length}',
-                          style: GoogleFonts.chivo(fontSize: 12)),
-                      if (provider.lastError != null)
-                        Text('Query error: ${provider.lastError}',
-                            style: GoogleFonts.chivo(
-                                fontSize: 11, color: Colors.red.shade800)),
-                    ],
-                  ),
-                );
-              },
-            ),
+            const SizedBox(height: 24),
 
             // Stats Row
             Consumer<AdminOrdersProvider>(
