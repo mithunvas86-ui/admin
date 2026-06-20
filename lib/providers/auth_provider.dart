@@ -39,18 +39,24 @@ class AuthProvider extends ChangeNotifier {
         password: password,
       );
 
-      if (response.user != null) {
-        _userEmail = response.user!.email;
-        notifyListeners();
-      } else {
-        throw Exception('Login failed');
+      // A real login MUST return a session — if it's null, there's no token,
+      // so every later query would run as anonymous (and RLS hides everything).
+      if (response.session == null) {
+        throw Exception(
+            'No session returned — the account is likely unconfirmed. '
+            'Turn off "Confirm email" or auto-confirm the user.');
       }
+      _userEmail = response.user?.email;
+      notifyListeners();
     } catch (e) {
-      final msg = e.toString().toLowerCase();
-      if (msg.contains('invalid') || msg.contains('credentials') || msg.contains('invalid_credentials')) {
-        throw Exception('Incorrect email or password');
-      }
-      throw Exception('Login failed. Please try again.');
+      // Surface the REAL reason (e.g. "Email not confirmed",
+      // "Invalid login credentials") instead of a generic message.
+      final raw = e
+          .toString()
+          .replaceAll('AuthException: ', '')
+          .replaceAll('Exception: ', '')
+          .trim();
+      throw Exception(raw.isEmpty ? 'Login failed' : raw);
     } finally {
       _isLoading = false;
       notifyListeners();
