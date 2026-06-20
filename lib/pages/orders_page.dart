@@ -148,10 +148,14 @@ class _DeliveryList extends StatelessWidget {
         .where((o) => (o['status'] ?? '') == 'pending')
         .length;
     final outForDelivery = orders
-        .where((o) => (o['status'] ?? '') == 'out_for_delivery')
+        .where((o) =>
+            (o['status'] ?? '') == 'in_transit' ||
+            (o['status'] ?? '') == 'out_for_delivery')
         .length;
     final completed = orders
-        .where((o) => (o['status'] ?? '') == 'completed')
+        .where((o) =>
+            (o['status'] ?? '') == 'delivered' ||
+            (o['status'] ?? '') == 'completed')
         .length;
 
     return Column(
@@ -303,7 +307,8 @@ class _OrderCard extends StatelessWidget {
                 ),
                 DropdownButton<String>(
                   value: status,
-                  items: _statusOptions(isDelivery)
+                  // Include the current status so old values don't crash the dropdown.
+                  items: {..._statusOptions(isDelivery), status.toString()}
                       .map((s) => DropdownMenuItem(
                             value: s,
                             child: Text(s.toUpperCase().replaceAll('_', ' ')),
@@ -441,7 +446,7 @@ class _DeliveryOrderCard extends StatelessWidget {
                       color: Colors.white, fontWeight: FontWeight.w700),
                   iconEnabledColor: Colors.white,
                   underline: const SizedBox.shrink(),
-                  items: _statusOptions(true)
+                  items: {..._statusOptions(true), status.toString()}
                       .map((s) => DropdownMenuItem(
                             value: s,
                             child: Text(
@@ -613,16 +618,15 @@ List<String> _statusOptions(bool isDelivery) => isDelivery
         'pending',
         'confirmed',
         'preparing',
-        'ready',
-        'out_for_delivery',
-        'completed',
+        'prepared',
+        'in_transit',
+        'delivered',
         'cancelled',
       ]
     : [
         'pending',
         'confirmed',
         'preparing',
-        'ready',
         'completed',
         'cancelled',
       ];
@@ -635,10 +639,13 @@ Color _deliveryStatusColor(String status) {
       return const Color(0xFF1565C0);
     case 'preparing':
       return const Color(0xFF6A1B9A);
+    case 'prepared':
     case 'ready':
       return const Color(0xFF2E7D32);
+    case 'in_transit':
     case 'out_for_delivery':
       return const Color(0xFF00838F);
+    case 'delivered':
     case 'completed':
       return const Color(0xFF1B5E20);
     case 'cancelled':

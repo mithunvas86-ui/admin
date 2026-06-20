@@ -49,7 +49,9 @@ class _KDSPageState extends State<KDSPage> {
 
           final activeOrders = ordersProvider.orders
               .where((o) =>
-                  o['status'] == 'pending' || o['status'] == 'preparing')
+                  o['status'] == 'pending' ||
+                  o['status'] == 'confirmed' ||
+                  o['status'] == 'preparing')
               .toList();
 
           if (activeOrders.isEmpty) {
@@ -152,6 +154,8 @@ class _OrderCard extends StatelessWidget {
     switch (status) {
       case 'pending':
         return Colors.red;
+      case 'confirmed':
+        return Colors.blue;
       case 'preparing':
         return Colors.orange;
       default:
@@ -391,20 +395,26 @@ class _OrderCard extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
           ),
-          // Action Button
+          // Action Button — 3 steps: confirm → start preparing → complete
           GestureDetector(
             onTap: () {
               if (status == 'pending') {
+                onStatusChange('confirmed');
+              } else if (status == 'confirmed') {
                 onStatusChange('preparing');
               } else if (status == 'preparing') {
-                onStatusChange('confirmed');
+                onStatusChange('completed');
               }
             },
             child: Container(
               padding: const EdgeInsets.all(8),
               color: Colors.green,
               child: Text(
-                status == 'pending' ? 'START' : 'READY',
+                status == 'pending'
+                    ? 'CONFIRM'
+                    : status == 'confirmed'
+                        ? 'START PREPARING'
+                        : 'COMPLETE',
                 style: GoogleFonts.chivo(
                   fontSize: 12,
                   fontWeight: FontWeight.w800,
