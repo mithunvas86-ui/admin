@@ -17,10 +17,18 @@ class AuthProvider extends ChangeNotifier {
   Future<void> _checkExistingSession() async {
     try {
       final session = SupabaseService.client.auth.currentSession;
-      if (session != null) {
-        _userEmail = session.user.email;
-        notifyListeners();
+      if (session == null) return;
+      try {
+        // Validate the stored session. If the refresh token is dead (e.g. the
+        // user was deleted/recreated), this throws — so we sign out rather than
+        // keep sending an invalid token that makes EVERY query return 401/empty.
+        await SupabaseService.client.auth.refreshSession();
+        _userEmail = SupabaseService.client.auth.currentSession?.user.email;
+      } catch (_) {
+        await SupabaseService.client.auth.signOut();
+        _userEmail = null;
       }
+      notifyListeners();
     } catch (e) {
       print('Error checking session: $e');
     }
