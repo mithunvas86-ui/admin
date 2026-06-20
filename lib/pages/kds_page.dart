@@ -52,7 +52,14 @@ class _KDSPageState extends State<KDSPage> {
                   o['status'] == 'pending' ||
                   o['status'] == 'confirmed' ||
                   o['status'] == 'preparing')
-              .toList();
+              .toList()
+            // First-in-first-served: oldest order shown first.
+            ..sort((a, b) => (DateTime.tryParse(
+                        a['created_at']?.toString() ?? '') ??
+                    DateTime.now())
+                .compareTo(DateTime.tryParse(
+                        b['created_at']?.toString() ?? '') ??
+                    DateTime.now()));
 
           if (activeOrders.isEmpty) {
             return Center(
