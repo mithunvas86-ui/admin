@@ -6,9 +6,18 @@ class AdminOrdersProvider extends ChangeNotifier {
   List<Map<String, dynamic>> _orders = [];
   bool _isLoading = false;
   Timer? _refreshTimer;
+  String? lastError;
 
   List<Map<String, dynamic>> get orders => _orders;
   bool get isLoading => _isLoading;
+
+  /// Live auth state for the on-screen diagnostic banner.
+  String get authStatus {
+    final s = SupabaseService.client.auth.currentSession;
+    if (s == null) return 'NOT SIGNED IN — queries run as anon';
+    final expired = s.isExpired ? ' (EXPIRED)' : '';
+    return 'signed in: ${s.user.email}$expired';
+  }
 
   void startAutoRefresh() {
     _refreshTimer?.cancel();
@@ -32,6 +41,7 @@ class AdminOrdersProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
+      lastError = null;
       final response = await SupabaseService.client
           .from('orders')
           .select('*')
@@ -39,6 +49,7 @@ class AdminOrdersProvider extends ChangeNotifier {
 
       _orders = List<Map<String, dynamic>>.from(response);
     } catch (e) {
+      lastError = e.toString();
       print('Error fetching orders: $e');
     }
     _isLoading = false;
