@@ -219,6 +219,12 @@ class _DashboardPageState extends State<DashboardPage> {
               icon: Icons.display_settings,
               onTap: () => context.go('/kds'),
             ),
+            const SizedBox(height: 12),
+            _MenuButton(
+              label: 'SERVICE HOURS',
+              icon: Icons.schedule,
+              onTap: () => context.go('/service-hours'),
+            ),
           ],
         ),
       ),

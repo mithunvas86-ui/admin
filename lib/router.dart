@@ -10,6 +10,7 @@ import 'pages/orders_page.dart';
 import 'pages/order_detail_page.dart';
 import 'pages/customers_page.dart';
 import 'pages/kds_page.dart';
+import 'pages/service_hours_page.dart';
 
 String? _authGuard(BuildContext context, GoRouterState state) {
   final auth = context.read<AuthProvider>();
@@ -63,6 +64,10 @@ final router = GoRouter(
     GoRoute(
       path: '/kds',
       builder: (context, state) => const KDSPage(),
+    ),
+    GoRoute(
+      path: '/service-hours',
+      builder: (context, state) => const ServiceHoursPage(),
     ),
   ],
 );
