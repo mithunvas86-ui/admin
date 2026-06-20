@@ -7,6 +7,7 @@ class AdminOrdersProvider extends ChangeNotifier {
   bool _isLoading = false;
   Timer? _refreshTimer;
   String? lastError;
+  String isAdminCheck = '?';
 
   List<Map<String, dynamic>> get orders => _orders;
   bool get isLoading => _isLoading;
@@ -42,6 +43,13 @@ class AdminOrdersProvider extends ChangeNotifier {
     notifyListeners();
     try {
       lastError = null;
+      // Ask the DB what is_admin() returns for THIS session's token.
+      try {
+        final r = await SupabaseService.client.rpc('is_admin');
+        isAdminCheck = r.toString();
+      } catch (e) {
+        isAdminCheck = 'rpc error: $e';
+      }
       final response = await SupabaseService.client
           .from('orders')
           .select('*')

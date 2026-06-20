@@ -153,6 +153,9 @@ class _DashboardPageState extends State<DashboardPage> {
                       Text('AUTH: ${provider.authStatus}',
                           style: GoogleFonts.chivo(
                               fontSize: 12, fontWeight: FontWeight.w700)),
+                      Text('is_admin() RPC: ${provider.isAdminCheck}',
+                          style: GoogleFonts.chivo(
+                              fontSize: 12, fontWeight: FontWeight.w700)),
                       Text('Orders loaded: ${provider.orders.length}',
                           style: GoogleFonts.chivo(fontSize: 12)),
                       if (provider.lastError != null)
