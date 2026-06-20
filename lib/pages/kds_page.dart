@@ -87,6 +87,16 @@ class _KDSPageState extends State<KDSPage> {
               final items = order['items'] as List<dynamic>? ?? [];
               final customerName =
                   order['customer_name'] as String? ?? 'Guest';
+              final orderType = (order['order_type'] as String?) ?? '';
+              final customerInfo =
+                  (order['customer_info'] as Map?)?.cast<String, dynamic>() ??
+                      {};
+              // Address can be top-level or nested in customer_info.
+              final deliveryAddress = (order['delivery_address'] as Map?)
+                      ?.cast<String, dynamic>() ??
+                  (customerInfo['delivery_address'] as Map?)
+                      ?.cast<String, dynamic>() ??
+                  <String, dynamic>{};
               final createdAt =
                   DateTime.tryParse(order['created_at'] as String? ?? '') ??
                       DateTime.now();
@@ -100,6 +110,8 @@ class _KDSPageState extends State<KDSPage> {
                 items: items,
                 imageMap: imageMap,
                 waitMinutes: waitTime.inMinutes,
+                orderType: orderType,
+                deliveryAddress: deliveryAddress,
                 onStatusChange: (newStatus) {
                   ordersProvider.updateOrderStatus(
                       order['id'] as String, newStatus);
@@ -120,6 +132,8 @@ class _OrderCard extends StatelessWidget {
   final List<dynamic> items;
   final Map<String, String?> imageMap;
   final int waitMinutes;
+  final String orderType;
+  final Map<String, dynamic> deliveryAddress;
   final Function(String) onStatusChange;
 
   const _OrderCard({
@@ -130,6 +144,8 @@ class _OrderCard extends StatelessWidget {
     required this.imageMap,
     required this.waitMinutes,
     required this.onStatusChange,
+    this.orderType = '',
+    this.deliveryAddress = const {},
   });
 
   Color get statusColor {
@@ -141,6 +157,110 @@ class _OrderCard extends StatelessWidget {
       default:
         return Colors.grey;
     }
+  }
+
+  bool get isDelivery => orderType.toLowerCase() == 'delivery';
+
+  /// White pill in the header showing the order type, emphasized for delivery.
+  Widget _typeBadge() {
+    IconData icon;
+    String label;
+    switch (orderType.toLowerCase()) {
+      case 'delivery':
+        icon = Icons.delivery_dining;
+        label = 'DELIVERY';
+        break;
+      case 'takeaway':
+        icon = Icons.takeout_dining;
+        label = 'TAKEAWAY';
+        break;
+      default:
+        icon = Icons.restaurant;
+        label = 'DINE IN';
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: statusColor),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: GoogleFonts.chivo(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              color: statusColor,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Compact address block for delivery orders (street / landmark / city — pincode).
+  Widget _deliveryAddressBlock() {
+    final street = (deliveryAddress['address'] ?? '').toString();
+    final landmark = (deliveryAddress['landmark'] ?? '').toString();
+    final city = (deliveryAddress['city'] ?? '').toString();
+    final pincode = (deliveryAddress['pincode'] ?? '').toString();
+    final cityLine =
+        [city, pincode].where((v) => v.isNotEmpty).join(' — ');
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      color: const Color(0xFFE3F2FD),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.location_on, size: 13, color: Color(0xFF1565C0)),
+              const SizedBox(width: 4),
+              Text(
+                'DELIVER TO',
+                style: GoogleFonts.chivo(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF1565C0),
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+          if (street.isNotEmpty)
+            Text(
+              street,
+              style: GoogleFonts.chivo(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black87),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          if (landmark.isNotEmpty)
+            Text(
+              'Near: $landmark',
+              style: GoogleFonts.chivo(fontSize: 11, color: Colors.black54),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          if (cityLine.isNotEmpty)
+            Text(
+              cityLine,
+              style: GoogleFonts.chivo(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87),
+            ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -184,6 +304,10 @@ class _OrderCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
+                if (orderType.isNotEmpty) ...[
+                  const SizedBox(height: 5),
+                  _typeBadge(),
+                ],
               ],
             ),
           ),
@@ -250,6 +374,9 @@ class _OrderCard extends StatelessWidget {
               ),
             ),
           ),
+          // Delivery address (delivery orders only)
+          if (isDelivery && deliveryAddress.isNotEmpty)
+            _deliveryAddressBlock(),
           // Timer
           Container(
             padding: const EdgeInsets.all(8),
