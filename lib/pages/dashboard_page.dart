@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/admin_orders_provider.dart';
+import '../services/supabase_service.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -181,6 +182,9 @@ class _DashboardPageState extends State<DashboardPage> {
               },
             ),
 
+            const SizedBox(height: 20),
+            const _SecurityActivityCard(),
+
             const SizedBox(height: 32),
             Text('MANAGEMENT', style: GoogleFonts.chivo(fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
             const SizedBox(height: 16),
@@ -308,5 +312,151 @@ class _MenuButton extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+// Security monitoring card — reads the audit_log (admin-only) for the last 24h.
+class _SecurityActivityCard extends StatefulWidget {
+  const _SecurityActivityCard();
+
+  @override
+  State<_SecurityActivityCard> createState() => _SecurityActivityCardState();
+}
+
+class _SecurityActivityCardState extends State<_SecurityActivityCard> {
+  List<Map<String, dynamic>> _events = [];
+  bool _loading = true;
+  bool _failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final since = DateTime.now()
+          .subtract(const Duration(hours: 24))
+          .toIso8601String();
+      final res = await SupabaseService.client
+          .from('audit_log')
+          .select('event,detail,ip,created_at')
+          .gte('created_at', since)
+          .order('created_at', ascending: false)
+          .limit(50);
+      if (mounted) {
+        setState(() {
+          _events = List<Map<String, dynamic>>.from(res);
+          _loading = false;
+          _failed = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _failed = true;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final blocks =
+        _events.where((e) => e['event'] == 'rate_limit_block').length;
+    final payFails =
+        _events.where((e) => e['event'] == 'payment_verify_fail').length;
+    final alert = blocks > 0 || payFails > 0;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: alert ? Colors.red.shade50 : Colors.grey.shade50,
+        border: Border.all(
+            color: alert ? Colors.red.shade300 : Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(alert ? Icons.warning_amber_rounded : Icons.shield_outlined,
+                  size: 18,
+                  color: alert ? Colors.red.shade700 : Colors.grey.shade700),
+              const SizedBox(width: 6),
+              Text('SECURITY ACTIVITY (24h)',
+                  style:
+                      GoogleFonts.chivo(fontSize: 13, fontWeight: FontWeight.w800)),
+              const Spacer(),
+              InkWell(
+                onTap: () {
+                  setState(() => _loading = true);
+                  _load();
+                },
+                child: const Icon(Icons.refresh, size: 16),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (_loading)
+            Text('Loading…',
+                style: GoogleFonts.chivo(fontSize: 12, color: Colors.grey))
+          else if (_failed)
+            Text('Run MONITORING.sql to enable the audit log.',
+                style: GoogleFonts.chivo(fontSize: 11, color: Colors.grey))
+          else ...[
+            Row(
+              children: [
+                _miniStat('FLOODS BLOCKED', blocks, Colors.red),
+                const SizedBox(width: 20),
+                _miniStat('FAILED PAYMENT CHECKS', payFails, Colors.orange),
+              ],
+            ),
+            const SizedBox(height: 10),
+            if (_events.isEmpty)
+              Text('No security events in the last 24h ✓',
+                  style: GoogleFonts.chivo(
+                      fontSize: 12, color: Colors.green.shade800))
+            else
+              ..._events.take(8).map((e) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 1),
+                    child: Text('• ${_fmt(e)}',
+                        style: GoogleFonts.chivo(
+                            fontSize: 11, color: Colors.grey.shade800)),
+                  )),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _miniStat(String label, int value, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('$value',
+            style: GoogleFonts.chivo(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: value > 0 ? color : Colors.grey)),
+        Text(label,
+            style: GoogleFonts.chivo(fontSize: 9, color: Colors.grey.shade700)),
+      ],
+    );
+  }
+
+  String _fmt(Map<String, dynamic> e) {
+    final t =
+        DateTime.tryParse(e['created_at']?.toString() ?? '')?.toLocal();
+    final time = t != null
+        ? '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}'
+        : '';
+    final ev = (e['event'] ?? '').toString().replaceAll('_', ' ');
+    final ip = e['ip'] != null ? '  ${e['ip']}' : '';
+    return '$time  $ev$ip';
   }
 }
