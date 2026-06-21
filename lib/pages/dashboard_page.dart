@@ -221,8 +221,8 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
             const SizedBox(height: 12),
             _MenuButton(
-              label: 'SERVICE HOURS',
-              icon: Icons.schedule,
+              label: 'SETTINGS',
+              icon: Icons.settings,
               onTap: () => context.go('/service-hours'),
             ),
           ],

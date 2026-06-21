@@ -27,6 +27,8 @@ class _ServiceHoursPageState extends State<ServiceHoursPage> {
     'delivery': 'Delivery',
   };
   final Map<String, _TypeHours> _cfg = {};
+  final _phoneCtrl = TextEditingController();
+  final _noteCtrl = TextEditingController();
   bool _loading = true;
   bool _saving = false;
 
@@ -34,6 +36,13 @@ class _ServiceHoursPageState extends State<ServiceHoursPage> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _phoneCtrl.dispose();
+    _noteCtrl.dispose();
+    super.dispose();
   }
 
   TimeOfDay _parse(String? s, TimeOfDay fb) {
@@ -63,6 +72,16 @@ class _ServiceHoursPageState extends State<ServiceHoursPage> {
           _parse(m['close'] as String?, const TimeOfDay(hour: 21, minute: 0)),
         );
       }
+      try {
+        final sc = await SupabaseService.client
+            .from('app_config')
+            .select('value')
+            .eq('key', 'support_contact')
+            .maybeSingle();
+        final scv = (sc?['value'] as Map?)?.cast<String, dynamic>() ?? {};
+        _phoneCtrl.text = (scv['phone'] as String?) ?? '';
+        _noteCtrl.text = (scv['hours_note'] as String?) ?? '';
+      } catch (_) {}
     } catch (_) {
       for (final t in _types) {
         _cfg[t] = _TypeHours(true, const TimeOfDay(hour: 9, minute: 0),
@@ -85,6 +104,16 @@ class _ServiceHoursPageState extends State<ServiceHoursPage> {
     try {
       await SupabaseService.client.from('app_config').upsert(
         {'key': 'service_hours', 'value': value},
+        onConflict: 'key',
+      );
+      await SupabaseService.client.from('app_config').upsert(
+        {
+          'key': 'support_contact',
+          'value': {
+            'phone': _phoneCtrl.text.trim(),
+            'hours_note': _noteCtrl.text.trim(),
+          },
+        },
         onConflict: 'key',
       );
       if (mounted) {
@@ -122,7 +151,7 @@ class _ServiceHoursPageState extends State<ServiceHoursPage> {
         leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () => context.go('/')),
-        title: Text('SERVICE HOURS',
+        title: Text('SETTINGS',
             style: GoogleFonts.chivo(fontSize: 18, fontWeight: FontWeight.w800)),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -132,6 +161,32 @@ class _ServiceHoursPageState extends State<ServiceHoursPage> {
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                Text('SUPPORT CONTACT',
+                    style: GoogleFonts.chivo(
+                        fontSize: 14, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(
+                    labelText: 'Support phone (shown in customer Help/FAQ)',
+                    hintText: '+91XXXXXXXXXX',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _noteCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Note (optional, e.g. "Available 10 AM – 9 PM")',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text('SERVICE HOURS',
+                    style: GoogleFonts.chivo(
+                        fontSize: 14, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 8),
                 Text(
                   "Set when each order type is available. Outside these hours, "
                   "customers can't place that order type.",
