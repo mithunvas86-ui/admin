@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../providers/admin_orders_provider.dart';
 import '../providers/admin_menu_provider.dart';
+import '../providers/auth_provider.dart';
 
 class KDSPage extends StatefulWidget {
   const KDSPage({super.key});
@@ -38,6 +40,16 @@ class _KDSPageState extends State<KDSPage> {
         ),
         backgroundColor: Colors.white,
         elevation: 1,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.black87),
+            tooltip: 'Logout',
+            onPressed: () async {
+              await adminAuth.logout();
+              if (context.mounted) context.go('/login');
+            },
+          ),
+        ],
       ),
       body: Consumer2<AdminOrdersProvider, AdminMenuProvider>(
         builder: (context, ordersProvider, menuProvider, _) {

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../providers/admin_orders_provider.dart';
+import '../providers/auth_provider.dart';
 
 class OrdersPage extends StatefulWidget {
   const OrdersPage({super.key});
@@ -17,7 +19,12 @@ class _OrdersPageState extends State<OrdersPage>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 2, vsync: this);
+    _tabs = TabController(
+      length: 2,
+      vsync: this,
+      // Delivery agents land directly on the Deliveries tab.
+      initialIndex: adminAuth.role == 'delivery' ? 1 : 0,
+    );
     final provider = context.read<AdminOrdersProvider>();
     provider.fetchOrders();
     provider.startAutoRefresh();
@@ -39,6 +46,16 @@ class _OrdersPageState extends State<OrdersPage>
                 fontSize: 24, fontWeight: FontWeight.w800)),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.black87),
+            tooltip: 'Logout',
+            onPressed: () async {
+              await adminAuth.logout();
+              if (context.mounted) context.go('/login');
+            },
+          ),
+        ],
         bottom: TabBar(
           controller: _tabs,
           labelStyle: GoogleFonts.chivo(

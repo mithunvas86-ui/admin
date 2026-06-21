@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'widgets/auth_gate.dart';
 import 'pages/dashboard_page.dart';
@@ -13,18 +12,23 @@ import 'pages/kds_page.dart';
 import 'pages/service_hours_page.dart';
 
 String? _authGuard(BuildContext context, GoRouterState state) {
-  final auth = context.read<AuthProvider>();
-  if (!auth.isAuthenticated && state.matchedLocation != '/login') {
+  final loc = state.matchedLocation;
+  if (!adminAuth.isAuthenticated && loc != '/login') {
     return '/login';
   }
-  if (auth.isAuthenticated && state.matchedLocation == '/login') {
-    return '/';
+  if (adminAuth.isAuthenticated && loc == '/login') {
+    return adminAuth.homeRoute;
   }
+  // Role gating: chef → Kitchen Display only; delivery agent → deliveries only.
+  final role = adminAuth.role;
+  if (role == 'chef' && loc != '/kds') return '/kds';
+  if (role == 'delivery' && loc != '/orders') return '/orders';
   return null;
 }
 
 final router = GoRouter(
   initialLocation: '/',
+  refreshListenable: adminAuth,
   redirect: _authGuard,
   routes: [
     GoRoute(

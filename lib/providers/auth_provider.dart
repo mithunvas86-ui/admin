@@ -9,6 +9,33 @@ class AuthProvider extends ChangeNotifier {
   String? get userEmail => _userEmail;
   bool get isLoading => _isLoading;
 
+  String? _role;
+  String? get role => _role;
+  // Where this user should land / be confined to.
+  String get homeRoute => _role == 'chef'
+      ? '/kds'
+      : _role == 'delivery'
+          ? '/orders'
+          : '/';
+
+  Future<void> _loadRole() async {
+    try {
+      final uid = SupabaseService.client.auth.currentUser?.id;
+      if (uid == null) {
+        _role = null;
+        return;
+      }
+      final res = await SupabaseService.client
+          .from('profiles')
+          .select('role')
+          .eq('id', uid)
+          .maybeSingle();
+      _role = res?['role'] as String?;
+    } catch (_) {
+      _role = null;
+    }
+  }
+
   // Try to restore session on init
   AuthProvider() {
     _checkExistingSession();
@@ -24,9 +51,11 @@ class AuthProvider extends ChangeNotifier {
         // keep sending an invalid token that makes EVERY query return 401/empty.
         await SupabaseService.client.auth.refreshSession();
         _userEmail = SupabaseService.client.auth.currentSession?.user.email;
+        await _loadRole();
       } catch (_) {
         await SupabaseService.client.auth.signOut();
         _userEmail = null;
+        _role = null;
       }
       notifyListeners();
     } catch (e) {
@@ -55,6 +84,7 @@ class AuthProvider extends ChangeNotifier {
             'Turn off "Confirm email" or auto-confirm the user.');
       }
       _userEmail = response.user?.email;
+      await _loadRole();
       notifyListeners();
     } catch (e) {
       // Surface the REAL reason (e.g. "Email not confirmed",
@@ -78,6 +108,7 @@ class AuthProvider extends ChangeNotifier {
 
       await SupabaseService.client.auth.signOut();
       _userEmail = null;
+      _role = null;
       notifyListeners();
     } catch (e) {
       throw Exception('Logout failed: $e');
@@ -87,3 +118,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 }
+
+/// Shared instance — used by both the widget tree and the router's
+/// refreshListenable so role-based redirects fire as soon as the role loads.
+final adminAuth = AuthProvider();

@@ -39,7 +39,7 @@ class MPROTIDiningAdminApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider<AuthProvider>.value(value: adminAuth),
         ChangeNotifierProvider(create: (_) => AdminMenuProvider()),
         ChangeNotifierProvider(create: (_) => AdminOrderProvider()),
         ChangeNotifierProvider(create: (_) => AdminOrdersProvider()),
