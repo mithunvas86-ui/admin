@@ -84,6 +84,7 @@ class AdminMenuProvider extends ChangeNotifier {
     double fat = 0,
     double fiber = 0,
     int? dailyLimit,
+    bool customizable = true,
   }) async {
     String? imageUrl;
     if (imageFile != null &&
@@ -101,6 +102,7 @@ class AdminMenuProvider extends ChangeNotifier {
       'description': description ?? '',
       'image_url': imageUrl,
       'available': available,
+      'customizable': customizable,
       'kcal': kcal,
       'serving_size': servingSize,
       'protein': protein,
@@ -132,6 +134,7 @@ class AdminMenuProvider extends ChangeNotifier {
     double? fiber,
     int? dailyLimit,
     bool clearDailyLimit = false,
+    bool? customizable,
   }) async {
     final updateData = <String, dynamic>{
       'name': name,
@@ -140,6 +143,7 @@ class AdminMenuProvider extends ChangeNotifier {
       if (category != null) 'category': category,
       'badge': (badge != null && badge.isNotEmpty) ? badge : null,
       if (available != null) 'available': available,
+      if (customizable != null) 'customizable': customizable,
       if (kcal != null) 'kcal': kcal,
       if (servingSize != null) 'serving_size': servingSize,
       if (protein != null) 'protein': protein,

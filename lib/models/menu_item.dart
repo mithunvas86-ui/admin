@@ -10,6 +10,7 @@ class MenuItem {
   final String? imageUrl;
   final String? badge;
   final bool featured;
+  final bool customizable;
   final DateTime? createdAt;
   // Nutrition
   final String servingSize;
@@ -34,6 +35,7 @@ class MenuItem {
     this.imageUrl,
     this.badge,
     this.featured = false,
+    this.customizable = true,
     this.createdAt,
     this.servingSize = '',
     this.protein = 0,
@@ -62,6 +64,7 @@ class MenuItem {
       imageUrl: json['image_url'] as String?,
       badge: json['badge'] as String?,
       featured: (json['featured'] as bool?) ?? false,
+      customizable: (json['customizable'] as bool?) ?? true,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'] as String)
           : null,
@@ -88,6 +91,7 @@ class MenuItem {
         'image_url': imageUrl,
         'badge': badge,
         'featured': featured,
+        'customizable': customizable,
         'created_at': createdAt?.toIso8601String(),
         'serving_size': servingSize,
         'protein': protein,

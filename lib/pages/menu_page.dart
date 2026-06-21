@@ -359,6 +359,7 @@ class _ItemFormDialogState extends State<_ItemFormDialog>
 
   String? _badge;
   bool _available = true;
+  bool _customizable = true;
   bool _hasLimit = false;
   File? _imageFile;
   Uint8List? _imageBytes;
@@ -379,6 +380,7 @@ class _ItemFormDialogState extends State<_ItemFormDialog>
       _category = e.category;
       _badge = e.badge;
       _available = e.available;
+      _customizable = e.customizable;
       _servingCtrl.text = e.servingSize;
       _kcalCtrl.text = e.kcal > 0 ? e.kcal.toString() : '';
       _proteinCtrl.text = e.protein > 0 ? e.protein.toStringAsFixed(1) : '';
@@ -442,6 +444,7 @@ class _ItemFormDialogState extends State<_ItemFormDialog>
           badge: _badge,
           imageFile: imgArg,
           available: _available,
+          customizable: _customizable,
           kcal: kcal,
           servingSize: _servingCtrl.text,
           protein: protein,
@@ -460,6 +463,7 @@ class _ItemFormDialogState extends State<_ItemFormDialog>
           badge: _badge,
           imageFile: imgArg,
           available: _available,
+          customizable: _customizable,
           kcal: kcal,
           servingSize: _servingCtrl.text,
           protein: protein,
@@ -567,11 +571,14 @@ class _ItemFormDialogState extends State<_ItemFormDialog>
                   ),
                   _AvailabilityTab(
                     available: _available,
+                    customizable: _customizable,
                     hasLimit: _hasLimit,
                     limitCtrl: _limitCtrl,
                     ordersToday: widget.existing?.ordersToday ?? 0,
                     onAvailableChanged: (v) =>
                         setState(() => _available = v),
+                    onCustomizableChanged: (v) =>
+                        setState(() => _customizable = v),
                     onHasLimitChanged: (v) =>
                         setState(() => _hasLimit = v),
                   ),
@@ -857,18 +864,22 @@ class _NutritionTab extends StatelessWidget {
 
 class _AvailabilityTab extends StatelessWidget {
   final bool available;
+  final bool customizable;
   final bool hasLimit;
   final TextEditingController limitCtrl;
   final int ordersToday;
   final ValueChanged<bool> onAvailableChanged;
+  final ValueChanged<bool> onCustomizableChanged;
   final ValueChanged<bool> onHasLimitChanged;
 
   const _AvailabilityTab({
     required this.available,
+    required this.customizable,
     required this.hasLimit,
     required this.limitCtrl,
     required this.ordersToday,
     required this.onAvailableChanged,
+    required this.onCustomizableChanged,
     required this.onHasLimitChanged,
   });
 
@@ -923,6 +934,42 @@ class _AvailabilityTab extends StatelessWidget {
                   value: available,
                   onChanged: onAvailableChanged,
                   activeColor: Colors.green,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Customization toggle
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey, width: 1.5),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.tune, size: 28, color: Colors.black54),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Allow customization',
+                          style: GoogleFonts.chivo(
+                              fontSize: 15, fontWeight: FontWeight.w700)),
+                      Text(
+                        customizable
+                            ? 'Shows spice level, standard includes & add-ons'
+                            : 'Simple item — no spice / includes / add-ons',
+                        style: GoogleFonts.chivo(
+                            fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: customizable,
+                  onChanged: onCustomizableChanged,
                 ),
               ],
             ),
