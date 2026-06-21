@@ -29,6 +29,12 @@ class _ServiceHoursPageState extends State<ServiceHoursPage> {
   final Map<String, _TypeHours> _cfg = {};
   final _phoneCtrl = TextEditingController();
   final _noteCtrl = TextEditingController();
+  final _bizCtrl = TextEditingController();
+  final _addrCtrl = TextEditingController();
+  final _gstNoCtrl = TextEditingController();
+  final _gstPctCtrl = TextEditingController();
+  final _deliveryCtrl = TextEditingController();
+  final _footerCtrl = TextEditingController();
   bool _loading = true;
   bool _saving = false;
 
@@ -40,8 +46,12 @@ class _ServiceHoursPageState extends State<ServiceHoursPage> {
 
   @override
   void dispose() {
-    _phoneCtrl.dispose();
-    _noteCtrl.dispose();
+    for (final c in [
+      _phoneCtrl, _noteCtrl, _bizCtrl, _addrCtrl,
+      _gstNoCtrl, _gstPctCtrl, _deliveryCtrl, _footerCtrl,
+    ]) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -82,6 +92,20 @@ class _ServiceHoursPageState extends State<ServiceHoursPage> {
         _phoneCtrl.text = (scv['phone'] as String?) ?? '';
         _noteCtrl.text = (scv['hours_note'] as String?) ?? '';
       } catch (_) {}
+      try {
+        final bc = await SupabaseService.client
+            .from('app_config')
+            .select('value')
+            .eq('key', 'bill_config')
+            .maybeSingle();
+        final bcv = (bc?['value'] as Map?)?.cast<String, dynamic>() ?? {};
+        _bizCtrl.text = (bcv['business_name'] as String?) ?? '';
+        _addrCtrl.text = (bcv['address'] as String?) ?? '';
+        _gstNoCtrl.text = (bcv['gst_number'] as String?) ?? '';
+        _gstPctCtrl.text = bcv['gst_percent']?.toString() ?? '';
+        _deliveryCtrl.text = bcv['delivery_charge']?.toString() ?? '';
+        _footerCtrl.text = (bcv['footer'] as String?) ?? '';
+      } catch (_) {}
     } catch (_) {
       for (final t in _types) {
         _cfg[t] = _TypeHours(true, const TimeOfDay(hour: 9, minute: 0),
@@ -112,6 +136,20 @@ class _ServiceHoursPageState extends State<ServiceHoursPage> {
           'value': {
             'phone': _phoneCtrl.text.trim(),
             'hours_note': _noteCtrl.text.trim(),
+          },
+        },
+        onConflict: 'key',
+      );
+      await SupabaseService.client.from('app_config').upsert(
+        {
+          'key': 'bill_config',
+          'value': {
+            'business_name': _bizCtrl.text.trim(),
+            'address': _addrCtrl.text.trim(),
+            'gst_number': _gstNoCtrl.text.trim(),
+            'gst_percent': double.tryParse(_gstPctCtrl.text.trim()) ?? 0,
+            'delivery_charge': double.tryParse(_deliveryCtrl.text.trim()) ?? 0,
+            'footer': _footerCtrl.text.trim(),
           },
         },
         onConflict: 'key',
@@ -194,7 +232,63 @@ class _ServiceHoursPageState extends State<ServiceHoursPage> {
                 ),
                 const SizedBox(height: 16),
                 ..._types.map(_card),
+                const SizedBox(height: 24),
+                Text('BILL / INVOICE',
+                    style: GoogleFonts.chivo(
+                        fontSize: 14, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 8),
+                TextField(
+                  controller: _bizCtrl,
+                  decoration: const InputDecoration(
+                      labelText: 'Business name', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _addrCtrl,
+                  decoration: const InputDecoration(
+                      labelText: 'Address', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _gstNoCtrl,
+                  decoration: const InputDecoration(
+                      labelText: 'GSTIN (optional)',
+                      border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _gstPctCtrl,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        decoration: const InputDecoration(
+                            labelText: 'GST % (inclusive)',
+                            border: OutlineInputBorder()),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: _deliveryCtrl,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        decoration: const InputDecoration(
+                            labelText: 'Delivery charge ₹',
+                            border: OutlineInputBorder()),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _footerCtrl,
+                  decoration: const InputDecoration(
+                      labelText: 'Bill footer note',
+                      border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
                   height: 48,
