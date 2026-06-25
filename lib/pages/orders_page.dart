@@ -1,3 +1,6 @@
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -553,6 +556,35 @@ class _DeliveryOrderCard extends StatelessWidget {
                                 fontWeight: FontWeight.w600,
                                 color: Colors.grey[800]),
                           ),
+                        if (_mapsUrl(addr) != null) ...[
+                          const SizedBox(height: 8),
+                          InkWell(
+                            onTap: () =>
+                                html.window.open(_mapsUrl(addr)!, '_blank'),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 7),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1565C0),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.navigation,
+                                      size: 14, color: Colors.white),
+                                  const SizedBox(width: 6),
+                                  Text('OPEN IN MAPS',
+                                      style: GoogleFonts.chivo(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w800,
+                                          color: Colors.white,
+                                          letterSpacing: 0.5)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   )
@@ -647,6 +679,20 @@ List<String> _statusOptions(bool isDelivery) => isDelivery
         'completed',
         'cancelled',
       ];
+
+/// Builds a navigable maps URL from a delivery address that carries GPS
+/// coordinates (pinned via the customer app's map picker). Returns null when
+/// the order has no precise location.
+String? _mapsUrl(Map<String, dynamic> addr) {
+  final link = addr['maps_link']?.toString();
+  if (link != null && link.isNotEmpty) return link;
+  final lat = addr['latitude']?.toString();
+  final lng = addr['longitude']?.toString();
+  if (lat != null && lat.isNotEmpty && lng != null && lng.isNotEmpty) {
+    return 'https://www.google.com/maps/search/?api=1&query=$lat,$lng';
+  }
+  return null;
+}
 
 Color _deliveryStatusColor(String status) {
   switch (status.toLowerCase()) {

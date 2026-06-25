@@ -1,3 +1,6 @@
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -234,6 +237,16 @@ class _OrderCard extends StatelessWidget {
     final pincode = (deliveryAddress['pincode'] ?? '').toString();
     final cityLine =
         [city, pincode].where((v) => v.isNotEmpty).join(' — ');
+    final mapsUrl = () {
+      final link = (deliveryAddress['maps_link'] ?? '').toString();
+      if (link.isNotEmpty) return link;
+      final lat = (deliveryAddress['latitude'] ?? '').toString();
+      final lng = (deliveryAddress['longitude'] ?? '').toString();
+      if (lat.isNotEmpty && lng.isNotEmpty) {
+        return 'https://www.google.com/maps/search/?api=1&query=$lat,$lng';
+      }
+      return '';
+    }();
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -281,6 +294,27 @@ class _OrderCard extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                   color: Colors.black87),
             ),
+          if (mapsUrl.isNotEmpty) ...[
+            const SizedBox(height: 5),
+            InkWell(
+              onTap: () => html.window.open(mapsUrl, '_blank'),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.navigation,
+                      size: 13, color: Color(0xFF1565C0)),
+                  const SizedBox(width: 4),
+                  Text('OPEN IN MAPS',
+                      style: GoogleFonts.chivo(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFF1565C0),
+                          letterSpacing: 0.5,
+                          decoration: TextDecoration.underline)),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
