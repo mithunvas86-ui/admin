@@ -13,17 +13,29 @@ import 'pages/service_hours_page.dart';
 
 String? _authGuard(BuildContext context, GoRouterState state) {
   final loc = state.matchedLocation;
-  if (!adminAuth.isAuthenticated && loc != '/login') {
-    return '/login';
-  }
-  if (adminAuth.isAuthenticated && loc == '/login') {
-    return adminAuth.homeRoute;
-  }
-  // Role gating: chef → Kitchen Display only; delivery agent → deliveries only.
+  final authed = adminAuth.isAuthenticated;
+
+  // Unauthenticated users only ever see the login screen.
+  if (!authed) return loc == '/login' ? null : '/login';
+
+  // Authenticated users have no business on the login screen.
+  if (loc == '/login') return adminAuth.homeRoute;
+
+  // Allow-list by role (deny by default). Admin pages are NOT reachable unless
+  // role == 'admin', so a missing/unreadable role can never expose them.
   final role = adminAuth.role;
-  if (role == 'chef' && loc != '/kds') return '/kds';
-  if (role == 'delivery' && loc != '/orders') return '/orders';
-  return null;
+  switch (role) {
+    case 'admin':
+      return null; // full access
+    case 'chef':
+      return loc == '/kds' ? null : '/kds';
+    case 'delivery':
+      return (loc == '/orders' || loc.startsWith('/orders/')) ? null : '/orders';
+    default:
+      // Authenticated but no recognized staff role → confine to the Kitchen
+      // Display, whose data is empty for non-staff (orders RLS uses is_staff()).
+      return loc == '/kds' ? null : '/kds';
+  }
 }
 
 final router = GoRouter(
