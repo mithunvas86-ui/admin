@@ -20,6 +20,34 @@
   <style id="flutter-loader-script"></style>
 </head>
 <body>
+  <!--
+    Flutter web (CanvasKit) renders into a WebGL canvas. Two things can turn the
+    whole app dark/black when this browser tab is switched away and back:
+
+      1. The tab is backgrounded long enough that the browser drops the WebGL/GPU
+         context ("webglcontextlost"). The canvas can't repaint and comes back
+         black — a reload restores it cleanly.
+
+      2. The common case: the tab is simply switched and the context is NOT lost,
+         but Flutter pauses rendering while hidden and doesn't always repaint on
+         return, leaving a stale black canvas. No "webglcontextlost" fires here,
+         so the reload below never triggers. Dispatching a synthetic resize when
+         the page becomes visible forces Flutter's engine to handle a metrics
+         change and repaint the scene — without a reload, so page state is kept.
+  -->
+  <script>
+    // Case 1: genuine GPU context loss after long backgrounding.
+    window.addEventListener('webglcontextlost', function () {
+      window.location.reload();
+    }, true);
+
+    // Case 2: quick tab switch — nudge Flutter to repaint on return.
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') {
+        window.dispatchEvent(new Event('resize'));
+      }
+    });
+  </script>
   <script src="flutter.js" defer></script>
   <script>
     window.addEventListener('load', function(ev) {

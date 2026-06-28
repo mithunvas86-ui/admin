@@ -17,18 +17,37 @@ class KDSPage extends StatefulWidget {
 }
 
 class _KDSPageState extends State<KDSPage> {
+  // Kitchen notification sound played when a new order arrives. Lives in
+  // admin/web/sounds/ so it's served from the app's base href (e.g. /admin/).
+  final html.AudioElement _newOrderSound =
+      html.AudioElement('sounds/new-order.mp3')..preload = 'auto';
+
   @override
   void initState() {
     super.initState();
     final ordersProvider = context.read<AdminOrdersProvider>();
+    ordersProvider.onNewOrder = _playNewOrderSound;
     ordersProvider.fetchOrders();
     ordersProvider.startAutoRefresh();
     context.read<AdminMenuProvider>().fetchAll();
   }
 
+  void _playNewOrderSound() {
+    try {
+      _newOrderSound.currentTime = 0;
+      // play() returns a promise that rejects if the browser blocks autoplay;
+      // the chef has interacted (login/navigation) by now so it's unlocked.
+      _newOrderSound.play();
+    } catch (_) {
+      // Ignore audio failures — a silent KDS is better than a crash.
+    }
+  }
+
   @override
   void dispose() {
-    context.read<AdminOrdersProvider>().stopAutoRefresh();
+    final ordersProvider = context.read<AdminOrdersProvider>();
+    ordersProvider.onNewOrder = null;
+    ordersProvider.stopAutoRefresh();
     super.dispose();
   }
 

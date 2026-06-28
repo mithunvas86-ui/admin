@@ -7,6 +7,17 @@ class AdminOrdersProvider extends ChangeNotifier {
   bool _isLoading = false;
   Timer? _refreshTimer;
 
+  /// Order ids seen on the previous fetch, used to detect newly arrived orders.
+  Set<String> _knownOrderIds = {};
+
+  /// True once the first fetch has established a baseline. The very first load
+  /// must NOT fire [onNewOrder] for the orders that already exist.
+  bool _baselineSet = false;
+
+  /// Called when one or more brand-new (pending) orders appear between fetches.
+  /// The KDS page uses this to play the kitchen notification sound.
+  VoidCallback? onNewOrder;
+
   List<Map<String, dynamic>> get orders => _orders;
   bool get isLoading => _isLoading;
 
@@ -38,6 +49,21 @@ class AdminOrdersProvider extends ChangeNotifier {
           .order('created_at', ascending: false);
 
       _orders = List<Map<String, dynamic>>.from(response);
+
+      // Detect newly arrived orders. New orders are inserted as 'pending', so a
+      // pending id we have not seen before means a fresh order just came in.
+      final currentIds = _orders
+          .map((o) => o['id']?.toString())
+          .whereType<String>()
+          .toSet();
+      final hasNewPending = _orders.any((o) =>
+          o['status'] == 'pending' &&
+          !_knownOrderIds.contains(o['id']?.toString()));
+      _knownOrderIds = currentIds;
+      if (_baselineSet && hasNewPending) {
+        onNewOrder?.call();
+      }
+      _baselineSet = true;
     } catch (e) {
       print('Error fetching orders: $e');
     }
