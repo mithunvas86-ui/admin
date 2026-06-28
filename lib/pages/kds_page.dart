@@ -22,6 +22,9 @@ class _KDSPageState extends State<KDSPage> {
   final html.AudioElement _newOrderSound =
       html.AudioElement('sounds/new-order.mp3')..preload = 'auto';
 
+  /// Whether the 15s background polling is active. Toggled from the app bar.
+  bool _autoRefresh = true;
+
   @override
   void initState() {
     super.initState();
@@ -40,6 +43,22 @@ class _KDSPageState extends State<KDSPage> {
       _newOrderSound.play();
     } catch (_) {
       // Ignore audio failures — a silent KDS is better than a crash.
+    }
+  }
+
+  /// Fetch orders immediately, regardless of the auto-refresh timer.
+  Future<void> _refreshNow() =>
+      context.read<AdminOrdersProvider>().fetchOrders();
+
+  /// Turn the 15s background polling on/off.
+  void _toggleAutoRefresh() {
+    final provider = context.read<AdminOrdersProvider>();
+    setState(() => _autoRefresh = !_autoRefresh);
+    if (_autoRefresh) {
+      provider.startAutoRefresh();
+      provider.fetchOrders(); // refresh straight away when re-enabled
+    } else {
+      provider.stopAutoRefresh();
     }
   }
 
@@ -63,6 +82,31 @@ class _KDSPageState extends State<KDSPage> {
         backgroundColor: Colors.white,
         elevation: 1,
         actions: [
+          // Manual refresh — pull the latest orders right now.
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.black87),
+            tooltip: 'Refresh now',
+            onPressed: _refreshNow,
+          ),
+          // Auto-refresh toggle (15s polling on/off).
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: TextButton.icon(
+              onPressed: _toggleAutoRefresh,
+              icon: Icon(
+                _autoRefresh ? Icons.autorenew : Icons.sync_disabled,
+                size: 20,
+                color: _autoRefresh ? Colors.green.shade700 : Colors.grey,
+              ),
+              label: Text(
+                _autoRefresh ? 'Auto ON' : 'Auto OFF',
+                style: GoogleFonts.chivo(
+                  fontWeight: FontWeight.w700,
+                  color: _autoRefresh ? Colors.green.shade700 : Colors.grey,
+                ),
+              ),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.black87),
             tooltip: 'Logout',
