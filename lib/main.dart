@@ -46,7 +46,7 @@ class MPROTIDiningAdminApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CustomerInfoProvider()),
       ],
       child: MaterialApp.router(
-        title: 'M·PROTI Admin',
+        title: 'Proti Bowls Admin',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.theme,
         routerConfig: router,

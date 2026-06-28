@@ -103741,7 +103741,7 @@ if(s!=null)return s
 return null}}
 A.Sy.prototype={
 I(a){var s=null,r=A.b([new A.rm(new A.B4($.Bw(),s,A.aYu(),t.eo),s,s,s,s,t.Vp),A.aa9(new A.aiN(),t.gT),A.aa9(new A.aiO(),t.lo),A.aa9(new A.aiP(),t.Kc),A.aa9(new A.aiQ(),t.Vj)],t.Ds),q=$.aZ3()
-return A.b5s(new A.xG($.b17(),"M\xb7PROTI Admin",q,!1,s),r)}}
+return A.b5s(new A.xG($.b17(),"Proti Bowls Admin",q,!1,s),r)}}
 A.aiN.prototype={
 $1(a){return new A.ji(A.b([],t.ov),A.eQ(B.OE,!0,t.N),$.an())},
 $S:654}

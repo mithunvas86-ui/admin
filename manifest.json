@@ -1,11 +1,11 @@
 {
-    "name": "mpro_dining_admin",
-    "short_name": "mpro_dining_admin",
+    "name": "Proti Bowls Admin",
+    "short_name": "Proti Bowls Admin",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FFFFFF",
+    "theme_color": "#1E88E5",
+    "description": "Proti Bowls Admin Application",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
