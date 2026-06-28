@@ -1,5 +1,6 @@
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -22,6 +23,10 @@ class _KDSPageState extends State<KDSPage> {
   final html.AudioElement _newOrderSound =
       html.AudioElement('sounds/new-order.mp3')..preload = 'auto';
 
+  /// Stops the new-order sound after a fixed duration so it does not play the
+  /// full ringtone.
+  Timer? _soundStopTimer;
+
   /// Whether the 15s background polling is active. Toggled from the app bar.
   bool _autoRefresh = true;
 
@@ -41,6 +46,12 @@ class _KDSPageState extends State<KDSPage> {
       // play() returns a promise that rejects if the browser blocks autoplay;
       // the chef has interacted (login/navigation) by now so it's unlocked.
       _newOrderSound.play();
+      // Play only the first 2 seconds, then stop and rewind.
+      _soundStopTimer?.cancel();
+      _soundStopTimer = Timer(const Duration(seconds: 2), () {
+        _newOrderSound.pause();
+        _newOrderSound.currentTime = 0;
+      });
     } catch (_) {
       // Ignore audio failures — a silent KDS is better than a crash.
     }
@@ -64,6 +75,7 @@ class _KDSPageState extends State<KDSPage> {
 
   @override
   void dispose() {
+    _soundStopTimer?.cancel();
     final ordersProvider = context.read<AdminOrdersProvider>();
     ordersProvider.onNewOrder = null;
     ordersProvider.stopAutoRefresh();
