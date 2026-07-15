@@ -1,3 +1,6 @@
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
@@ -374,6 +377,98 @@ class _SubscriptionKdsPageState extends State<SubscriptionKdsPage>
     );
   }
 
+  /// Same delivery-address block as the main admin KDS: blue "DELIVER TO"
+  /// panel with street / landmark / city — pincode and an OPEN IN MAPS link
+  /// built from the map-picker pin (maps_link or lat/lng).
+  Widget _deliveryAddressBlock(Map<String, dynamic> deliveryAddress) {
+    final street = (deliveryAddress['address'] ?? '').toString();
+    final landmark = (deliveryAddress['landmark'] ?? '').toString();
+    final city = (deliveryAddress['city'] ?? '').toString();
+    final pincode = (deliveryAddress['pincode'] ?? '').toString();
+    final cityLine = [city, pincode].where((v) => v.isNotEmpty).join(' — ');
+    final mapsUrl = () {
+      final link = (deliveryAddress['maps_link'] ?? '').toString();
+      if (link.isNotEmpty) return link;
+      final lat = (deliveryAddress['latitude'] ?? '').toString();
+      final lng = (deliveryAddress['longitude'] ?? '').toString();
+      if (lat.isNotEmpty && lng.isNotEmpty) {
+        return 'https://www.google.com/maps/search/?api=1&query=$lat,$lng';
+      }
+      return '';
+    }();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      color: const Color(0xFFE3F2FD),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.location_on, size: 13, color: Color(0xFF1565C0)),
+              const SizedBox(width: 4),
+              Text(
+                'DELIVER TO',
+                style: GoogleFonts.chivo(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF1565C0),
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+          if (street.isNotEmpty)
+            Text(
+              street,
+              style: GoogleFonts.chivo(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black87),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          if (landmark.isNotEmpty)
+            Text(
+              'Near: $landmark',
+              style: GoogleFonts.chivo(fontSize: 11, color: Colors.black54),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          if (cityLine.isNotEmpty)
+            Text(
+              cityLine,
+              style: GoogleFonts.chivo(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87),
+            ),
+          if (mapsUrl.isNotEmpty) ...[
+            const SizedBox(height: 5),
+            InkWell(
+              onTap: () => html.window.open(mapsUrl, '_blank'),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.navigation,
+                      size: 13, color: Color(0xFF1565C0)),
+                  const SizedBox(width: 4),
+                  Text('OPEN IN MAPS',
+                      style: GoogleFonts.chivo(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFF1565C0),
+                          letterSpacing: 0.5,
+                          decoration: TextDecoration.underline)),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _deliveryCard(
       SubscriptionAdminProvider p, Map<String, dynamic> m, bool isManager) {
     final sub = (m['subscriptions'] as Map?)?.cast<String, dynamic>() ?? {};
@@ -427,17 +522,10 @@ class _SubscriptionKdsPageState extends State<SubscriptionKdsPage>
                 ),
               ],
             ),
-            if ((address['address'] ?? '').toString().isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  '📍 ${address['address']}'
-                  '${(address['landmark'] ?? '').toString().isNotEmpty ? ', near ${address['landmark']}' : ''}'
-                  '${(address['city'] ?? '').toString().isNotEmpty ? ', ${address['city']}' : ''}'
-                  '${(address['pincode'] ?? '').toString().isNotEmpty ? ' — ${address['pincode']}' : ''}',
-                  style: GoogleFonts.inter(fontSize: 13),
-                ),
-              ),
+            if (address.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              _deliveryAddressBlock(address),
+            ],
             const SizedBox(height: 10),
             Row(
               children: [
