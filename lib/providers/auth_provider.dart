@@ -16,7 +16,9 @@ class AuthProvider extends ChangeNotifier {
       ? '/kds'
       : _role == 'delivery'
           ? '/orders'
-          : '/';
+          : _role == 'sub_manager'
+              ? '/subs'
+              : '/';
 
   Future<void> _loadRole() async {
     try {

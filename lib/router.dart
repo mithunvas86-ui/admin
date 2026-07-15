@@ -10,6 +10,9 @@ import 'pages/order_detail_page.dart';
 import 'pages/customers_page.dart';
 import 'pages/kds_page.dart';
 import 'pages/service_hours_page.dart';
+import 'pages/subscriptions_page.dart';
+import 'pages/subscription_kds_page.dart';
+import 'pages/subscription_settings_page.dart';
 
 String? _authGuard(BuildContext context, GoRouterState state) {
   final loc = state.matchedLocation;
@@ -27,10 +30,18 @@ String? _authGuard(BuildContext context, GoRouterState state) {
   switch (role) {
     case 'admin':
       return null; // full access
+    case 'sub_manager':
+      // Subscription manager (separate credentials) — confined to the
+      // subscription section: members, kitchen, settings.
+      return loc.startsWith('/subs') ? null : '/subs';
     case 'chef':
-      return loc == '/kds' ? null : '/kds';
+      // Kitchen staff see both kitchen displays (orders + subscriptions).
+      return (loc == '/kds' || loc == '/subs-kds') ? null : '/kds';
     case 'delivery':
-      return (loc == '/orders' || loc.startsWith('/orders/')) ? null : '/orders';
+      return (loc == '/orders' || loc.startsWith('/orders/') ||
+              loc == '/subs-kds')
+          ? null
+          : '/orders';
     default:
       // Authenticated but no recognized staff role → confine to the Kitchen
       // Display, whose data is empty for non-staff (orders RLS uses is_staff()).
@@ -84,6 +95,18 @@ final router = GoRouter(
     GoRoute(
       path: '/service-hours',
       builder: (context, state) => const ServiceHoursPage(),
+    ),
+    GoRoute(
+      path: '/subs',
+      builder: (context, state) => const SubscriptionsPage(),
+    ),
+    GoRoute(
+      path: '/subs-kds',
+      builder: (context, state) => const SubscriptionKdsPage(),
+    ),
+    GoRoute(
+      path: '/subs-settings',
+      builder: (context, state) => const SubscriptionSettingsPage(),
     ),
   ],
 );
