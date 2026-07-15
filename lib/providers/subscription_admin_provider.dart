@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
 import '../services/supabase_service.dart';
 
 /// State + actions for the whole subscription section of the admin panel:
@@ -22,6 +25,10 @@ class SubscriptionAdminProvider extends ChangeNotifier {
   List<Map<String, dynamic>> templates = [];
   List<Map<String, dynamic>> agents = [];
   List<Map<String, dynamic>> meals = []; // meal_confirmations for [kdsDate]
+  List<Map<String, dynamic>> mealLibrary = []; // subscription_meals catalog
+  /// Daily menu for [kdsDate] / the schedule editor: preference → schedule row
+  /// (with joined meal). Kept in sync by fetchMeals / fetchSchedule.
+  Map<String, Map<String, dynamic>> scheduleByPref = {};
 
   /// The date the kitchen is looking at (defaults to today).
   DateTime kdsDate = DateTime.now();
@@ -70,11 +77,127 @@ class SubscriptionAdminProvider extends ChangeNotifier {
           .order('priority', ascending: false)
           .order('created_at');
       meals = (rows as List).cast<Map<String, dynamic>>();
+      await fetchSchedule(kdsDate); // dish of the day per preference (KDS)
       error = null;
     } catch (e) {
       error = 'Could not load meals: $e';
     }
     notifyListeners();
+  }
+
+  // ── Meal library + daily schedule (customizable meal plan) ────────────────
+
+  Future<void> fetchMealLibrary() async {
+    try {
+      final rows = await _client
+          .from('subscription_meals')
+          .select()
+          .order('sort_order')
+          .order('name');
+      mealLibrary = (rows as List).cast<Map<String, dynamic>>();
+      error = null;
+    } catch (e) {
+      error = 'Could not load meal library: $e';
+    }
+    notifyListeners();
+  }
+
+  Future<void> fetchSchedule(DateTime date) async {
+    try {
+      final rows = await _client
+          .from('meal_schedule')
+          .select('*, subscription_meals(name,description,image_url,kcal)')
+          .eq('meal_date', _d(date));
+      scheduleByPref = {
+        for (final r in (rows as List).cast<Map<String, dynamic>>())
+          (r['food_preference'] as String): r,
+      };
+      notifyListeners();
+    } catch (_) {/* schedule is optional — KDS still works without it */}
+  }
+
+  /// Assign (or clear, with null mealId) the dish for a date + preference.
+  Future<String?> setScheduledMeal(
+      DateTime date, String preference, String? mealId) async {
+    try {
+      if (mealId == null) {
+        await _client
+            .from('meal_schedule')
+            .delete()
+            .eq('meal_date', _d(date))
+            .eq('food_preference', preference);
+      } else {
+        await _client.from('meal_schedule').upsert({
+          'meal_date': _d(date),
+          'food_preference': preference,
+          'meal_id': mealId,
+        }, onConflict: 'meal_date,food_preference');
+      }
+      await fetchSchedule(date);
+      return null;
+    } catch (e) {
+      return 'Could not update the menu: $e';
+    }
+  }
+
+  /// Create/update a dish. [imageFile] is a File (mobile) or Uint8List (web),
+  /// uploaded to the shared menu-images bucket like the dining menu does.
+  Future<String?> saveMealDish(Map<String, dynamic> dish,
+      {dynamic imageFile}) async {
+    try {
+      final data = Map<String, dynamic>.from(dish);
+      final id = data.remove('id');
+      if (imageFile != null) {
+        try {
+          data['image_url'] = await _uploadMealImage(imageFile);
+        } catch (e) {
+          return 'Image upload failed: $e';
+        }
+      }
+      data['updated_at'] = DateTime.now().toIso8601String();
+      if (id == null) {
+        await _client.from('subscription_meals').insert(data);
+      } else {
+        await _client.from('subscription_meals').update(data).eq('id', id);
+      }
+      await fetchMealLibrary();
+      return null;
+    } catch (e) {
+      return 'Could not save dish: $e';
+    }
+  }
+
+  Future<void> deleteMealDish(String id) async {
+    try {
+      await _client.from('subscription_meals').delete().eq('id', id);
+      await fetchMealLibrary();
+    } catch (e) {
+      error = 'Could not delete dish: $e';
+      notifyListeners();
+    }
+  }
+
+  Future<String> _uploadMealImage(dynamic imageFile) async {
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    String fileName;
+    dynamic uploadData;
+    if (imageFile is File) {
+      fileName = 'submeal_${timestamp}_${p.basename(imageFile.path)}';
+      uploadData = imageFile;
+    } else if (imageFile is Uint8List) {
+      fileName = 'submeal_${timestamp}_image.jpg';
+      uploadData = imageFile;
+    } else {
+      throw Exception('Invalid image type');
+    }
+    if (uploadData is File) {
+      await _client.storage.from('menu-images').upload(fileName, uploadData);
+    } else {
+      await _client.storage
+          .from('menu-images')
+          .uploadBinary(fileName, uploadData as Uint8List);
+    }
+    return _client.storage.from('menu-images').getPublicUrl(fileName);
   }
 
   void setKdsDate(DateTime d) {

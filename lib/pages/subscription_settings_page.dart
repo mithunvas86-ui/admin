@@ -400,7 +400,7 @@ class _SubscriptionSettingsPageState extends State<SubscriptionSettingsPage>
             style:
                 GoogleFonts.chivo(fontWeight: FontWeight.w800, fontSize: 14)),
         Text(
-          'Placeholders: {{name}} {{date}} {{plan}} {{member_code}} {{cutoff_time}}',
+          'Placeholders: {{name}} {{date}} {{plan}} {{meal}} {{member_code}} {{cutoff_time}}',
           style: GoogleFonts.inter(fontSize: 12, color: Colors.grey[700]),
         ),
         const SizedBox(height: 8),

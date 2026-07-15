@@ -13,6 +13,7 @@ import 'pages/service_hours_page.dart';
 import 'pages/subscriptions_page.dart';
 import 'pages/subscription_dashboard_page.dart';
 import 'pages/subscription_kds_page.dart';
+import 'pages/subscription_meals_page.dart';
 import 'pages/subscription_settings_page.dart';
 
 String? _authGuard(BuildContext context, GoRouterState state) {
@@ -108,6 +109,10 @@ final router = GoRouter(
     GoRoute(
       path: '/subs-kds',
       builder: (context, state) => const SubscriptionKdsPage(),
+    ),
+    GoRoute(
+      path: '/subs-meals',
+      builder: (context, state) => const SubscriptionMealsPage(),
     ),
     GoRoute(
       path: '/subs-settings',

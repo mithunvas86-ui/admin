@@ -68,10 +68,8 @@ class _SubscriptionKdsPageState extends State<SubscriptionKdsPage>
       toPrepare += n;
       prepared += (m['prepared_count'] as num?)?.toInt() ?? 0;
       final sub = (m['subscriptions'] as Map?)?.cast<String, dynamic>() ?? {};
-      final pref = ((sub['food_preference'] ?? 'other') as String)
-          .replaceAll('_', '-')
-          .toUpperCase();
-      byPref[pref] = (byPref[pref] ?? 0) + n;
+      final prefKey = (sub['food_preference'] ?? 'other') as String;
+      byPref[prefKey] = (byPref[prefKey] ?? 0) + n;
     }
     final pendingCount = toPrepare - prepared;
 
@@ -220,14 +218,20 @@ class _SubscriptionKdsPageState extends State<SubscriptionKdsPage>
               padding: const EdgeInsets.only(bottom: 6),
               child: Wrap(
                 spacing: 8,
-                children: byPref.entries
-                    .map((e) => Chip(
-                          label: Text('${e.key}: ${e.value}',
-                              style: GoogleFonts.chivo(
-                                  fontSize: 11, fontWeight: FontWeight.w800)),
-                          visualDensity: VisualDensity.compact,
-                        ))
-                    .toList(),
+                runSpacing: 4,
+                children: byPref.entries.map((e) {
+                  final p = context.read<SubscriptionAdminProvider>();
+                  final dish = (p.scheduleByPref[e.key]?['subscription_meals']
+                          as Map?)?['name'] as String?;
+                  final label = e.key.replaceAll('_', '-').toUpperCase();
+                  return Chip(
+                    label: Text(
+                        '$label × ${e.value}${dish != null ? '  ·  $dish' : ''}',
+                        style: GoogleFonts.chivo(
+                            fontSize: 11, fontWeight: FontWeight.w800)),
+                    visualDensity: VisualDensity.compact,
+                  );
+                }).toList(),
               ),
             ),
         ],
@@ -242,12 +246,14 @@ class _SubscriptionKdsPageState extends State<SubscriptionKdsPage>
     final done = (m['prepared_count'] as num?)?.toInt() ?? 0;
     final priority = (m['priority'] as num?)?.toInt() ?? 0;
     final isPrepared = m['status'] == 'prepared';
-    final pref = ((sub['food_preference'] ?? '') as String)
-        .replaceAll('_', '-')
-        .toUpperCase();
+    final prefKey = (sub['food_preference'] ?? '') as String;
+    final pref = prefKey.replaceAll('_', '-').toUpperCase();
     final goal =
         ((sub['health_goal'] ?? '') as String).replaceAll('_', ' ').toUpperCase();
     final notes = (sub['health_notes'] ?? '') as String;
+    // Today's scheduled dish for this member's preference (Meal Planner).
+    final dish = (p.scheduleByPref[prefKey]?['subscription_meals'] as Map?)
+        ?.cast<String, dynamic>();
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
@@ -313,6 +319,14 @@ class _SubscriptionKdsPageState extends State<SubscriptionKdsPage>
                     style: GoogleFonts.inter(
                         fontSize: 12.5, color: Colors.grey[800]),
                   ),
+                  if (dish != null)
+                    Text(
+                      '🍽 ${dish['name']}',
+                      style: GoogleFonts.chivo(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.indigo[800]),
+                    ),
                   if (notes.isNotEmpty)
                     Text('⚠ $notes',
                         style: GoogleFonts.inter(

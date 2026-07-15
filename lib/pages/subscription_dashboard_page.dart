@@ -203,6 +203,12 @@ class _SubscriptionDashboardPageState
                 ),
                 const SizedBox(height: 12),
                 _MenuButton(
+                  label: 'MEAL PLANNER',
+                  icon: Icons.restaurant_menu,
+                  onTap: () => context.go('/subs-meals'),
+                ),
+                const SizedBox(height: 12),
+                _MenuButton(
                   label: 'KITCHEN DISPLAY',
                   icon: Icons.soup_kitchen,
                   onTap: () => context.go('/subs-kds'),
