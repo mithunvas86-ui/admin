@@ -11,6 +11,7 @@ import 'pages/customers_page.dart';
 import 'pages/kds_page.dart';
 import 'pages/service_hours_page.dart';
 import 'pages/subscriptions_page.dart';
+import 'pages/subscription_dashboard_page.dart';
 import 'pages/subscription_kds_page.dart';
 import 'pages/subscription_settings_page.dart';
 
@@ -98,6 +99,10 @@ final router = GoRouter(
     ),
     GoRoute(
       path: '/subs',
+      builder: (context, state) => const SubscriptionDashboardPage(),
+    ),
+    GoRoute(
+      path: '/subs-members',
       builder: (context, state) => const SubscriptionsPage(),
     ),
     GoRoute(

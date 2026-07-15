@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../providers/subscription_admin_provider.dart';
 import '../providers/auth_provider.dart';
@@ -86,6 +87,12 @@ class _SubscriptionKdsPageState extends State<SubscriptionKdsPage>
                 GoogleFonts.chivo(fontSize: 20, fontWeight: FontWeight.w800)),
         backgroundColor: Colors.white,
         elevation: 1,
+        leading: isManager
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                onPressed: () => context.go('/subs'),
+              )
+            : null,
         actions: [
           TextButton.icon(
             onPressed: () async {

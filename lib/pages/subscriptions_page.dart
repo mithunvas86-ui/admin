@@ -45,22 +45,16 @@ class _SubscriptionsPageState extends State<SubscriptionsPage>
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: Text('SUBSCRIPTIONS',
+        title: Text('MEMBERS',
             style:
                 GoogleFonts.chivo(fontSize: 22, fontWeight: FontWeight.w800)),
         backgroundColor: Colors.white,
         elevation: 1,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          onPressed: () => context.go('/subs'),
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.soup_kitchen, color: Colors.black87),
-            tooltip: 'Subscription kitchen',
-            onPressed: () => context.go('/subs-kds'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings, color: Colors.black87),
-            tooltip: 'Plans, banners & WhatsApp',
-            onPressed: () => context.go('/subs-settings'),
-          ),
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.black87),
             onPressed: p.fetchSubscriptions,
