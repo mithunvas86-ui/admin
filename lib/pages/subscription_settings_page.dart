@@ -136,6 +136,10 @@ class _SubscriptionSettingsPageState extends State<SubscriptionSettingsPage>
         TextEditingController(text: plan?['description'] as String? ?? '');
     final price =
         TextEditingController(text: plan?['price']?.toString() ?? '');
+    final comparePrice = TextEditingController(
+        text: (plan?['compare_at_price'] ?? '').toString() == '0'
+            ? ''
+            : (plan?['compare_at_price'] ?? '').toString());
     final days =
         TextEditingController(text: plan?['duration_days']?.toString() ?? '30');
     final mealsDay =
@@ -174,6 +178,14 @@ class _SubscriptionSettingsPageState extends State<SubscriptionSettingsPage>
                           keyboardType: TextInputType.number,
                           decoration:
                               const InputDecoration(labelText: 'Price ₹'))),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: TextField(
+                          controller: comparePrice,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                              labelText: 'Normal price ₹',
+                              helperText: 'Shows "SAVE X%"'))),
                   const SizedBox(width: 8),
                   Expanded(
                       child: TextField(
@@ -224,6 +236,7 @@ class _SubscriptionSettingsPageState extends State<SubscriptionSettingsPage>
       'tagline': tagline.text.trim(),
       'description': desc.text.trim(),
       'price': double.tryParse(price.text) ?? 0,
+      'compare_at_price': double.tryParse(comparePrice.text) ?? 0,
       'duration_days': int.tryParse(days.text) ?? 30,
       'meals_per_day': int.tryParse(mealsDay.text) ?? 1,
       'badge': badge.text.trim(),
