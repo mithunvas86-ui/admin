@@ -480,11 +480,17 @@ class SubscriptionAdminProvider extends ChangeNotifier {
     }
   }
 
-  /// Manual trigger of the nightly job ("Send now" in the panel).
-  Future<String?> sendTonightNow() async {
+  /// Manual trigger of the nightly job ("Send now" in the panel). Sends to
+  /// every active member when [subscriptionIds] is omitted/empty, or only to
+  /// the given members otherwise.
+  Future<String?> sendTonightNow({List<String>? subscriptionIds}) async {
     try {
-      final res = await _client.functions
-          .invoke('send-daily-meal-whatsapp', body: {'source': 'manual'});
+      final res = await _client.functions.invoke('send-daily-meal-whatsapp',
+          body: {
+            'source': 'manual',
+            if (subscriptionIds != null && subscriptionIds.isNotEmpty)
+              'subscription_ids': subscriptionIds,
+          });
       final data = (res.data as Map?)?.cast<String, dynamic>() ?? {};
       if (data['ok'] == true) {
         final sent = data['sent'] ?? 0;
@@ -497,6 +503,44 @@ class SubscriptionAdminProvider extends ChangeNotifier {
       return data['error']?.toString() ?? 'Job failed';
     } catch (e) {
       return 'Job failed: $e';
+    }
+  }
+
+  // ── Automation member selection (app_config) ────────────────────────────────
+  // Which members the nightly cron run should cover: everyone active (default)
+  // or an admin-picked subset. See send-daily-meal-whatsapp.
+
+  Future<Map<String, dynamic>> loadMealReminderMembers() async {
+    try {
+      final row = await _client
+          .from('app_config')
+          .select('value')
+          .eq('key', 'meal_reminder_members')
+          .maybeSingle();
+      final v = (row?['value'] as Map?)?.cast<String, dynamic>() ?? {};
+      return {
+        'mode': (v['mode'] as String?) ?? 'all',
+        'subscriptionIds': ((v['subscription_ids'] as List?) ?? [])
+            .map((e) => e.toString())
+            .toList(),
+      };
+    } catch (_) {
+      return {'mode': 'all', 'subscriptionIds': <String>[]};
+    }
+  }
+
+  Future<String?> saveMealReminderMembers(
+      String mode, List<String> subscriptionIds) async {
+    try {
+      await _client.from('app_config').upsert({
+        'key': 'meal_reminder_members',
+        'value': {'mode': mode, 'subscription_ids': subscriptionIds},
+        'description': 'Which members the nightly WhatsApp reminder covers',
+        'updated_at': DateTime.now().toIso8601String(),
+      }, onConflict: 'key');
+      return null;
+    } catch (e) {
+      return 'Could not save member selection: $e';
     }
   }
 }

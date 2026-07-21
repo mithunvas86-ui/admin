@@ -26,7 +26,9 @@ class _SubscriptionSettingsPageState extends State<SubscriptionSettingsPage>
   @override
   void initState() {
     super.initState();
-    context.read<SubscriptionAdminProvider>().fetchEditors();
+    final p = context.read<SubscriptionAdminProvider>();
+    p.fetchEditors();
+    p.fetchSubscriptions(); // populates p.members for the WHATSAPP SEND picker
   }
 
   @override
@@ -409,34 +411,7 @@ class _SubscriptionSettingsPageState extends State<SubscriptionSettingsPage>
     return ListView(
       padding: const EdgeInsets.all(12),
       children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('MANUAL',
-                    style: GoogleFonts.chivo(
-                        fontWeight: FontWeight.w800, fontSize: 13)),
-                const SizedBox(height: 6),
-                Text(
-                  'Send tonight\'s "meal tomorrow?" question to every active '
-                  'member right now, regardless of the automated time below.',
-                  style: GoogleFonts.inter(fontSize: 13),
-                ),
-                const SizedBox(height: 10),
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    final msg = await p.sendTonightNow();
-                    if (mounted) _toast(msg ?? 'Done');
-                  },
-                  icon: const Icon(Icons.send),
-                  label: const Text('SEND TONIGHT\'S QUESTION NOW'),
-                ),
-              ],
-            ),
-          ),
-        ),
+        _ManualSendCard(provider: p, onToast: _toast),
         const SizedBox(height: 16),
         Card(
           color: Colors.blue[50],
@@ -451,13 +426,19 @@ class _SubscriptionSettingsPageState extends State<SubscriptionSettingsPage>
                 const SizedBox(height: 6),
                 Text(
                   'Every night at the time below, the system automatically '
-                  'messages each active member asking if they want '
+                  'messages the covered members asking if they want '
                   'tomorrow\'s meal. Replies (YES/NO) update the kitchen '
                   'automatically.',
                   style: GoogleFonts.inter(fontSize: 13),
                 ),
                 const SizedBox(height: 10),
                 _ReminderTimeEditor(provider: p, onToast: _toast),
+                const Divider(height: 28),
+                Text('WHO IT COVERS',
+                    style: GoogleFonts.chivo(
+                        fontWeight: FontWeight.w800, fontSize: 12)),
+                const SizedBox(height: 8),
+                _AutomationMembersEditor(provider: p, onToast: _toast),
               ],
             ),
           ),
@@ -604,6 +585,227 @@ class _TemplateCardState extends State<_TemplateCard> {
 /// Editable send time (IST) for the nightly meal-reminder WhatsApp message.
 /// Stored in app_config; the edge function polls every 5 minutes and only
 /// actually sends once past this time each day.
+/// Checkbox list of active members with select-all/clear shortcuts. Shared by
+/// the manual send card and the automation coverage editor.
+class _MemberSelector extends StatelessWidget {
+  final List<Map<String, dynamic>> members;
+  final Set<String> selected;
+  final ValueChanged<Set<String>> onChanged;
+
+  const _MemberSelector({
+    required this.members,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (members.isEmpty) {
+      return Text('No active members yet.',
+          style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[600]));
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            TextButton(
+              onPressed: () => onChanged(
+                  members.map((m) => m['id'] as String).toSet()),
+              child: const Text('SELECT ALL'),
+            ),
+            TextButton(
+              onPressed: () => onChanged({}),
+              child: const Text('CLEAR'),
+            ),
+            const Spacer(),
+            Text('${selected.length} selected',
+                style: GoogleFonts.inter(
+                    fontSize: 12, color: Colors.grey[700])),
+          ],
+        ),
+        Container(
+          constraints: const BoxConstraints(maxHeight: 240),
+          decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!)),
+          child: ListView(
+            shrinkWrap: true,
+            children: members.map((m) {
+              final id = m['id'] as String;
+              final name = (m['customer_name'] as String?) ?? '';
+              final code = (m['member_code'] as String?) ?? '';
+              return CheckboxListTile(
+                dense: true,
+                value: selected.contains(id),
+                title: Text(name.isEmpty ? 'Unnamed member' : name,
+                    style: GoogleFonts.inter(fontSize: 13)),
+                subtitle: code.isEmpty
+                    ? null
+                    : Text(code,
+                        style: GoogleFonts.inter(
+                            fontSize: 11, color: Colors.grey[600])),
+                onChanged: (v) {
+                  final next = Set<String>.from(selected);
+                  v == true ? next.add(id) : next.remove(id);
+                  onChanged(next);
+                },
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// MANUAL send card — everyone active, or a hand-picked subset, right now.
+class _ManualSendCard extends StatefulWidget {
+  final SubscriptionAdminProvider provider;
+  final void Function(String, {bool ok}) onToast;
+
+  const _ManualSendCard({required this.provider, required this.onToast});
+
+  @override
+  State<_ManualSendCard> createState() => _ManualSendCardState();
+}
+
+class _ManualSendCardState extends State<_ManualSendCard> {
+  bool _useSelection = false;
+  Set<String> _selected = {};
+
+  @override
+  Widget build(BuildContext context) {
+    final members = widget.provider.members;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('MANUAL',
+                style: GoogleFonts.chivo(
+                    fontWeight: FontWeight.w800, fontSize: 13)),
+            const SizedBox(height: 6),
+            Text(
+              'Send tonight\'s "meal tomorrow?" question right now, '
+              'regardless of the automated time below.',
+              style: GoogleFonts.inter(fontSize: 13),
+            ),
+            const SizedBox(height: 10),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              value: _useSelection,
+              title: Text(
+                  _useSelection ? 'Selected members only' : 'All active members',
+                  style: GoogleFonts.inter(
+                      fontSize: 13, fontWeight: FontWeight.w600)),
+              onChanged: (v) => setState(() => _useSelection = v),
+            ),
+            if (_useSelection) ...[
+              const SizedBox(height: 6),
+              _MemberSelector(
+                members: members,
+                selected: _selected,
+                onChanged: (s) => setState(() => _selected = s),
+              ),
+              const SizedBox(height: 10),
+            ],
+            ElevatedButton.icon(
+              onPressed: (_useSelection && _selected.isEmpty)
+                  ? null
+                  : () async {
+                      final msg = await widget.provider.sendTonightNow(
+                        subscriptionIds:
+                            _useSelection ? _selected.toList() : null,
+                      );
+                      widget.onToast(msg ?? 'Done');
+                    },
+              icon: const Icon(Icons.send),
+              label: Text(_useSelection
+                  ? 'SEND TO ${_selected.length} SELECTED'
+                  : 'SEND TONIGHT\'S QUESTION NOW'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Which members the AUTOMATED nightly run covers — persisted separately
+/// from the send time so either can change independently.
+class _AutomationMembersEditor extends StatefulWidget {
+  final SubscriptionAdminProvider provider;
+  final void Function(String, {bool ok}) onToast;
+
+  const _AutomationMembersEditor(
+      {required this.provider, required this.onToast});
+
+  @override
+  State<_AutomationMembersEditor> createState() =>
+      _AutomationMembersEditorState();
+}
+
+class _AutomationMembersEditorState extends State<_AutomationMembersEditor> {
+  bool _useSelection = false;
+  Set<String> _selected = {};
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.provider.loadMealReminderMembers().then((v) {
+      if (!mounted) return;
+      setState(() {
+        _useSelection = v['mode'] == 'selected';
+        _selected = Set<String>.from(v['subscriptionIds'] as List);
+        _loaded = true;
+      });
+    });
+  }
+
+  Future<void> _save() async {
+    final err = await widget.provider.saveMealReminderMembers(
+      _useSelection ? 'selected' : 'all',
+      _selected.toList(),
+    );
+    widget.onToast(err ?? 'Automation coverage saved ✅', ok: err == null);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final members = widget.provider.members;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          dense: true,
+          value: _useSelection,
+          title: Text(
+              _useSelection ? 'Selected members only' : 'All active members',
+              style:
+                  GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
+          onChanged: _loaded ? (v) => setState(() => _useSelection = v) : null,
+        ),
+        if (_useSelection) ...[
+          const SizedBox(height: 6),
+          _MemberSelector(
+            members: members,
+            selected: _selected,
+            onChanged: (s) => setState(() => _selected = s),
+          ),
+          const SizedBox(height: 10),
+        ],
+        ElevatedButton(
+          onPressed: _loaded ? _save : null,
+          child: const Text('SAVE COVERAGE'),
+        ),
+      ],
+    );
+  }
+}
+
 class _ReminderTimeEditor extends StatefulWidget {
   final SubscriptionAdminProvider provider;
   final void Function(String, {bool ok}) onToast;
