@@ -390,12 +390,17 @@ class _SubscriptionSettingsPageState extends State<SubscriptionSettingsPage>
                         fontWeight: FontWeight.w800, fontSize: 13)),
                 const SizedBox(height: 6),
                 Text(
-                  'Every night at 8 PM the system messages each active member '
-                  'asking if they want tomorrow\'s meal. Replies (YES/NO) update '
-                  'the kitchen automatically. You can also trigger it now:',
+                  'Every night at the time below, the system messages each '
+                  'active member asking if they want tomorrow\'s meal. '
+                  'Replies (YES/NO) update the kitchen automatically.',
                   style: GoogleFonts.inter(fontSize: 13),
                 ),
                 const SizedBox(height: 10),
+                _ReminderTimeEditor(provider: p, onToast: _toast),
+                const SizedBox(height: 10),
+                Text('Or trigger it right now:',
+                    style: GoogleFonts.inter(fontSize: 13)),
+                const SizedBox(height: 6),
                 ElevatedButton.icon(
                   onPressed: () async {
                     final msg = await p.sendTonightNow();
@@ -562,6 +567,67 @@ class _TemplateCardState extends State<_TemplateCard> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Editable send time (IST) for the nightly meal-reminder WhatsApp message.
+/// Stored in app_config; the edge function polls every 5 minutes and only
+/// actually sends once past this time each day.
+class _ReminderTimeEditor extends StatefulWidget {
+  final SubscriptionAdminProvider provider;
+  final void Function(String, {bool ok}) onToast;
+
+  const _ReminderTimeEditor({required this.provider, required this.onToast});
+
+  @override
+  State<_ReminderTimeEditor> createState() => _ReminderTimeEditorState();
+}
+
+class _ReminderTimeEditorState extends State<_ReminderTimeEditor> {
+  TimeOfDay _time = const TimeOfDay(hour: 20, minute: 0);
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.provider.loadMealReminderTime().then((v) {
+      if (!mounted) return;
+      setState(() {
+        _time = TimeOfDay(hour: v['hour'] ?? 20, minute: v['minute'] ?? 0);
+        _loaded = true;
+      });
+    });
+  }
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(context: context, initialTime: _time);
+    if (picked != null) setState(() => _time = picked);
+  }
+
+  Future<void> _save() async {
+    final err =
+        await widget.provider.saveMealReminderTime(_time.hour, _time.minute);
+    widget.onToast(err ?? 'Reminder time saved ✅', ok: err == null);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: _loaded ? _pickTime : null,
+            icon: const Icon(Icons.schedule),
+            label: Text(_loaded ? _time.format(context) : 'Loading…'),
+          ),
+        ),
+        const SizedBox(width: 8),
+        ElevatedButton(
+          onPressed: _loaded ? _save : null,
+          child: const Text('SAVE TIME'),
+        ),
+      ],
     );
   }
 }

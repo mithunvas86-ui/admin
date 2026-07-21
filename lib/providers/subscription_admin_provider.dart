@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import '../services/supabase_service.dart';
 
@@ -442,6 +441,42 @@ class SubscriptionAdminProvider extends ChangeNotifier {
       return null;
     } catch (e) {
       return 'Could not save credentials: $e';
+    }
+  }
+
+  // ── Nightly reminder time (app_config) ──────────────────────────────────────
+  // The edge function polls every 5 minutes and only actually sends once past
+  // this IST time each day — see send-daily-meal-whatsapp. Defaults to 8 PM,
+  // the original fixed schedule, until changed here.
+
+  Future<Map<String, int>> loadMealReminderTime() async {
+    try {
+      final row = await _client
+          .from('app_config')
+          .select('value')
+          .eq('key', 'meal_reminder_time')
+          .maybeSingle();
+      final v = (row?['value'] as Map?)?.cast<String, dynamic>() ?? {};
+      return {
+        'hour': (v['hour'] as num?)?.toInt() ?? 20,
+        'minute': (v['minute'] as num?)?.toInt() ?? 0,
+      };
+    } catch (_) {
+      return {'hour': 20, 'minute': 0};
+    }
+  }
+
+  Future<String?> saveMealReminderTime(int hour, int minute) async {
+    try {
+      await _client.from('app_config').upsert({
+        'key': 'meal_reminder_time',
+        'value': {'hour': hour, 'minute': minute},
+        'description': 'Nightly meal-reminder WhatsApp send time (IST)',
+        'updated_at': DateTime.now().toIso8601String(),
+      }, onConflict: 'key');
+      return null;
+    } catch (e) {
+      return 'Could not save time: $e';
     }
   }
 
