@@ -5,10 +5,11 @@ import 'package:provider/provider.dart';
 import '../providers/subscription_admin_provider.dart';
 
 /// No-code control room for the subscription programme:
-///   PLANS      — create/edit the plans & pricing shown in the customer app
-///   BANNERS    — the promo banners on the customer home page
-///   WHATSAPP   — edit every automated message + API credentials + "send now"
-///   AGENTS     — delivery agent roster
+///   PLANS             — create/edit the plans & pricing shown in the customer app
+///   BANNERS           — the promo banners on the customer home page
+///   WHATSAPP SETTINGS — API credentials + every automated message's text
+///   WHATSAPP SEND     — manual one-off send, and the nightly automation's time
+///   AGENTS            — delivery agent roster
 /// Every change here is live in production without touching code.
 class SubscriptionSettingsPage extends StatefulWidget {
   const SubscriptionSettingsPage({super.key});
@@ -20,7 +21,7 @@ class SubscriptionSettingsPage extends StatefulWidget {
 
 class _SubscriptionSettingsPageState extends State<SubscriptionSettingsPage>
     with SingleTickerProviderStateMixin {
-  late final TabController _tabs = TabController(length: 4, vsync: this);
+  late final TabController _tabs = TabController(length: 5, vsync: this);
 
   @override
   void initState() {
@@ -65,7 +66,8 @@ class _SubscriptionSettingsPageState extends State<SubscriptionSettingsPage>
           tabs: const [
             Tab(text: 'PLANS'),
             Tab(text: 'BANNERS'),
-            Tab(text: 'WHATSAPP'),
+            Tab(text: 'WHATSAPP SETTINGS'),
+            Tab(text: 'WHATSAPP SEND'),
             Tab(text: 'AGENTS'),
           ],
         ),
@@ -75,7 +77,8 @@ class _SubscriptionSettingsPageState extends State<SubscriptionSettingsPage>
         children: [
           _plansTab(p),
           _bannersTab(p),
-          _whatsappTab(p),
+          _whatsappSettingsTab(p),
+          _whatsappSendTab(p),
           _agentsTab(p),
         ],
       ),
@@ -372,47 +375,13 @@ class _SubscriptionSettingsPageState extends State<SubscriptionSettingsPage>
     _toast(err ?? 'Banner saved ✅', ok: err == null);
   }
 
-  // ── WHATSAPP ───────────────────────────────────────────────────────────────
+  // ── WHATSAPP SETTINGS (credentials + message text — no sending here) ───────
 
-  Widget _whatsappTab(SubscriptionAdminProvider p) {
+  Widget _whatsappSettingsTab(SubscriptionAdminProvider p) {
     return ListView(
       padding: const EdgeInsets.all(12),
       children: [
-        Card(
-          color: Colors.blue[50],
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('NIGHTLY AUTOMATION',
-                    style: GoogleFonts.chivo(
-                        fontWeight: FontWeight.w800, fontSize: 13)),
-                const SizedBox(height: 6),
-                Text(
-                  'Every night at the time below, the system messages each '
-                  'active member asking if they want tomorrow\'s meal. '
-                  'Replies (YES/NO) update the kitchen automatically.',
-                  style: GoogleFonts.inter(fontSize: 13),
-                ),
-                const SizedBox(height: 10),
-                _ReminderTimeEditor(provider: p, onToast: _toast),
-                const SizedBox(height: 10),
-                Text('Or trigger it right now:',
-                    style: GoogleFonts.inter(fontSize: 13)),
-                const SizedBox(height: 6),
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    final msg = await p.sendTonightNow();
-                    if (mounted) _toast(msg ?? 'Done');
-                  },
-                  icon: const Icon(Icons.send),
-                  label: const Text('SEND TONIGHT\'S QUESTION NOW'),
-                ),
-              ],
-            ),
-          ),
-        ),
+        _CredentialsCard(provider: p, onToast: _toast),
         const SizedBox(height: 16),
         Text('MESSAGE TEMPLATES',
             style:
@@ -430,8 +399,69 @@ class _SubscriptionSettingsPageState extends State<SubscriptionSettingsPage>
                 _toast(err ?? 'Message updated ✅', ok: err == null);
               },
             )),
+      ],
+    );
+  }
+
+  // ── WHATSAPP SEND (manual one-off, and the automated nightly job) ──────────
+
+  Widget _whatsappSendTab(SubscriptionAdminProvider p) {
+    return ListView(
+      padding: const EdgeInsets.all(12),
+      children: [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('MANUAL',
+                    style: GoogleFonts.chivo(
+                        fontWeight: FontWeight.w800, fontSize: 13)),
+                const SizedBox(height: 6),
+                Text(
+                  'Send tonight\'s "meal tomorrow?" question to every active '
+                  'member right now, regardless of the automated time below.',
+                  style: GoogleFonts.inter(fontSize: 13),
+                ),
+                const SizedBox(height: 10),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    final msg = await p.sendTonightNow();
+                    if (mounted) _toast(msg ?? 'Done');
+                  },
+                  icon: const Icon(Icons.send),
+                  label: const Text('SEND TONIGHT\'S QUESTION NOW'),
+                ),
+              ],
+            ),
+          ),
+        ),
         const SizedBox(height: 16),
-        _CredentialsCard(provider: p, onToast: _toast),
+        Card(
+          color: Colors.blue[50],
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('AUTOMATED',
+                    style: GoogleFonts.chivo(
+                        fontWeight: FontWeight.w800, fontSize: 13)),
+                const SizedBox(height: 6),
+                Text(
+                  'Every night at the time below, the system automatically '
+                  'messages each active member asking if they want '
+                  'tomorrow\'s meal. Replies (YES/NO) update the kitchen '
+                  'automatically.',
+                  style: GoogleFonts.inter(fontSize: 13),
+                ),
+                const SizedBox(height: 10),
+                _ReminderTimeEditor(provider: p, onToast: _toast),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }
