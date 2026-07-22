@@ -11,14 +11,32 @@ class AuthProvider extends ChangeNotifier {
 
   String? _role;
   String? get role => _role;
-  // Where this user should land / be confined to.
-  String get homeRoute => _role == 'chef'
-      ? '/kds'
-      : _role == 'delivery'
-          ? '/orders'
-          : _role == 'sub_manager'
-              ? '/subs'
-              : '/';
+
+  // Where this user should land / be confined to. Exhaustive on purpose —
+  // anything not explicitly listed (including a retired 'chef'/'delivery'
+  // value, null, or garbage) sends them back to login rather than a live
+  // page; the router's _authGuard fail-closed branch signs them out before
+  // this is ever reached with an unrecognized role.
+  String get homeRoute {
+    switch (_role) {
+      case 'admin':
+        return '/';
+      case 'gym_manager':
+        return '/';
+      case 'sub_manager':
+        return '/subs';
+      case 'gym_chef':
+        return '/kds';
+      case 'gym_delivery':
+        return '/orders';
+      case 'subs_chef':
+        return '/subs-kitchen';
+      case 'subs_delivery':
+        return '/subs-delivery';
+      default:
+        return '/login';
+    }
+  }
 
   Future<void> _loadRole() async {
     try {

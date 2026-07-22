@@ -12,11 +12,12 @@ import 'pages/kds_page.dart';
 import 'pages/service_hours_page.dart';
 import 'pages/subscriptions_page.dart';
 import 'pages/subscription_dashboard_page.dart';
-import 'pages/subscription_kds_page.dart';
+import 'pages/subscription_chef_page.dart';
+import 'pages/subscription_delivery_page.dart';
 import 'pages/subscription_meals_page.dart';
 import 'pages/subscription_settings_page.dart';
 
-String? _authGuard(BuildContext context, GoRouterState state) {
+Future<String?> _authGuard(BuildContext context, GoRouterState state) async {
   final loc = state.matchedLocation;
   final authed = adminAuth.isAuthenticated;
 
@@ -28,26 +29,44 @@ String? _authGuard(BuildContext context, GoRouterState state) {
 
   // Allow-list by role (deny by default). Admin pages are NOT reachable unless
   // role == 'admin', so a missing/unreadable role can never expose them.
+  //
+  // chef/delivery were retired in favor of model-scoped roles below — a
+  // profiles.role of 'chef', 'delivery', null, or anything unrecognized
+  // falls through to the fail-closed default, which signs the user out
+  // rather than land them on any live KDS/order page.
   final role = adminAuth.role;
   switch (role) {
     case 'admin':
-      return null; // full access
+      return null; // full access — both models
+    case 'gym_manager':
+      // Full run of the gym/restaurant side — dashboard, orders, menu
+      // (incl. pricing), analytics, customers, KDS, service hours — but
+      // not the subscription section.
+      return loc.startsWith('/subs') ? '/' : null;
     case 'sub_manager':
       // Subscription manager (separate credentials) — confined to the
       // subscription section: members, kitchen, settings.
       return loc.startsWith('/subs') ? null : '/subs';
-    case 'chef':
-      // Kitchen staff see both kitchen displays (orders + subscriptions).
-      return (loc == '/kds' || loc == '/subs-kds') ? null : '/kds';
-    case 'delivery':
-      return (loc == '/orders' || loc.startsWith('/orders/') ||
-              loc == '/subs-kds')
+    case 'gym_chef':
+      // Gym-model kitchen staff — restaurant KDS only, not the subscription
+      // kitchen/delivery screen.
+      return loc == '/kds' ? null : '/kds';
+    case 'gym_delivery':
+      // Gym-model delivery staff — restaurant orders only, not the
+      // subscription kitchen/delivery screen.
+      return (loc == '/orders' || loc.startsWith('/orders/'))
           ? null
           : '/orders';
+    case 'subs_chef':
+      return loc == '/subs-kitchen' ? null : '/subs-kitchen';
+    case 'subs_delivery':
+      return loc == '/subs-delivery' ? null : '/subs-delivery';
     default:
-      // Authenticated but no recognized staff role → confine to the Kitchen
-      // Display, whose data is empty for non-staff (orders RLS uses is_staff()).
-      return loc == '/kds' ? null : '/kds';
+      // Not a recognized staff role — including the retired 'chef'/
+      // 'delivery' values. Fail closed: sign out entirely rather than
+      // fall through to any live page.
+      await adminAuth.logout();
+      return '/login';
   }
 }
 
@@ -107,8 +126,12 @@ final router = GoRouter(
       builder: (context, state) => const SubscriptionsPage(),
     ),
     GoRoute(
-      path: '/subs-kds',
-      builder: (context, state) => const SubscriptionKdsPage(),
+      path: '/subs-kitchen',
+      builder: (context, state) => const SubscriptionChefPage(),
+    ),
+    GoRoute(
+      path: '/subs-delivery',
+      builder: (context, state) => const SubscriptionDeliveryPage(),
     ),
     GoRoute(
       path: '/subs-meals',

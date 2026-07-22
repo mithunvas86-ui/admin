@@ -26,7 +26,7 @@ class _OrdersPageState extends State<OrdersPage>
       length: 2,
       vsync: this,
       // Delivery agents land directly on the Deliveries tab.
-      initialIndex: adminAuth.role == 'delivery' ? 1 : 0,
+      initialIndex: adminAuth.role == 'gym_delivery' ? 1 : 0,
     );
     final provider = context.read<AdminOrdersProvider>();
     provider.fetchOrders();

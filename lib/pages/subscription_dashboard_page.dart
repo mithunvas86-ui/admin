@@ -211,7 +211,13 @@ class _SubscriptionDashboardPageState
                 _MenuButton(
                   label: 'KITCHEN DISPLAY',
                   icon: Icons.soup_kitchen,
-                  onTap: () => context.go('/subs-kds'),
+                  onTap: () => context.go('/subs-kitchen'),
+                ),
+                const SizedBox(height: 12),
+                _MenuButton(
+                  label: 'DELIVERY',
+                  icon: Icons.delivery_dining,
+                  onTap: () => context.go('/subs-delivery'),
                 ),
                 const SizedBox(height: 12),
                 _MenuButton(
