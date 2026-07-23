@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'providers/auth_provider.dart';
 import 'widgets/auth_gate.dart';
+import 'pages/model_chooser_page.dart';
 import 'pages/dashboard_page.dart';
 import 'pages/menu_page.dart';
 import 'pages/analytics_page.dart';
@@ -37,7 +38,14 @@ Future<String?> _authGuard(BuildContext context, GoRouterState state) async {
   final role = adminAuth.role;
   switch (role) {
     case 'admin':
-      return null; // full access — both models
+      // Full access to both models — but the very first thing an admin sees
+      // each session is the Gym/Subscription chooser, regardless of whether
+      // they arrived via a fresh /login or an already-restored session
+      // landing straight on some other route.
+      if (!adminAuth.hasChosenModel && loc != '/choose-model') {
+        return '/choose-model';
+      }
+      return null;
     case 'gym_manager':
       // Full run of the gym/restaurant side — dashboard, orders, menu
       // (incl. pricing), analytics, customers, KDS, service hours — but
@@ -78,6 +86,10 @@ final router = GoRouter(
     GoRoute(
       path: '/login',
       builder: (context, state) => const AuthGate(),
+    ),
+    GoRoute(
+      path: '/choose-model',
+      builder: (context, state) => const ModelChooserPage(),
     ),
     GoRoute(
       path: '/',

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../providers/subscription_admin_provider.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/model_switcher.dart';
 
 /// Subscription DASHBOARD — same visual template as the main admin dashboard
 /// (stat cards + black-bordered menu buttons). This is the sub_manager's
@@ -58,6 +59,7 @@ class _SubscriptionDashboardPageState
               )
             : null,
         actions: [
+          const ModelSwitcher(current: 'subscription'),
           IconButton(
             icon: Icon(
               Icons.refresh,

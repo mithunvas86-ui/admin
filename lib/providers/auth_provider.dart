@@ -12,6 +12,17 @@ class AuthProvider extends ChangeNotifier {
   String? _role;
   String? get role => _role;
 
+  // Whether an 'admin' has picked Gym/Subscription on /choose-model yet this
+  // session. Starts false on every fresh app load (and on logout), so the
+  // chooser reappears on the next real login regardless of how the admin
+  // ends up authenticated — not just via the /login-page transition.
+  bool _modelChosen = false;
+  bool get hasChosenModel => _modelChosen;
+  void chooseModel() {
+    _modelChosen = true;
+    notifyListeners();
+  }
+
   // Where this user should land / be confined to. Exhaustive on purpose —
   // anything not explicitly listed (including a retired 'chef'/'delivery'
   // value, null, or garbage) sends them back to login rather than a live
@@ -20,7 +31,7 @@ class AuthProvider extends ChangeNotifier {
   String get homeRoute {
     switch (_role) {
       case 'admin':
-        return '/';
+        return '/choose-model';
       case 'gym_manager':
         return '/';
       case 'sub_manager':
@@ -129,6 +140,7 @@ class AuthProvider extends ChangeNotifier {
       await SupabaseService.client.auth.signOut();
       _userEmail = null;
       _role = null;
+      _modelChosen = false;
       notifyListeners();
     } catch (e) {
       throw Exception('Logout failed: $e');

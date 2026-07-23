@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/admin_orders_provider.dart';
 import '../services/supabase_service.dart';
+import '../widgets/model_switcher.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -84,6 +85,7 @@ class _DashboardPageState extends State<DashboardPage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
+          const ModelSwitcher(current: 'gym'),
           IconButton(
             icon: Icon(
               Icons.refresh,
