@@ -228,13 +228,8 @@ class AdminMenuProvider extends ChangeNotifier {
   /// previously featured dish. Pass [featured] = false to clear it.
   Future<void> setFeatured(String itemId, bool featured) async {
     try {
-      if (featured) {
-        // Clear the currently featured item (if any).
-        await SupabaseService.client
-            .from(SupabaseService.tableMenuItems)
-            .update({'featured': false})
-            .eq('featured', true);
-      }
+      // Multiple items can be featured at once — shown as a horizontal
+      // scroller on the customer app's home screen.
       await SupabaseService.client
           .from(SupabaseService.tableMenuItems)
           .update({'featured': featured})
