@@ -348,6 +348,7 @@ class _ItemFormDialogState extends State<_ItemFormDialog>
 
   final _nameCtrl = TextEditingController();
   final _priceCtrl = TextEditingController();
+  final _compareAtPriceCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
   final _servingCtrl = TextEditingController();
   final _kcalCtrl = TextEditingController();
@@ -376,6 +377,8 @@ class _ItemFormDialogState extends State<_ItemFormDialog>
     if (e != null) {
       _nameCtrl.text = e.name;
       _priceCtrl.text = e.price.toStringAsFixed(0);
+      _compareAtPriceCtrl.text =
+          e.compareAtPrice > 0 ? e.compareAtPrice.toStringAsFixed(0) : '';
       _descCtrl.text = e.description;
       _category = e.category;
       _badge = e.badge;
@@ -397,6 +400,7 @@ class _ItemFormDialogState extends State<_ItemFormDialog>
     _tabs.dispose();
     _nameCtrl.dispose();
     _priceCtrl.dispose();
+    _compareAtPriceCtrl.dispose();
     _descCtrl.dispose();
     _servingCtrl.dispose();
     _kcalCtrl.dispose();
@@ -426,6 +430,7 @@ class _ItemFormDialogState extends State<_ItemFormDialog>
     final provider = ctx.read<AdminMenuProvider>();
     final dynamic imgArg = kIsWeb ? _imageBytes : _imageFile;
     final price = double.tryParse(_priceCtrl.text) ?? 0;
+    final compareAtPrice = double.tryParse(_compareAtPriceCtrl.text) ?? 0;
     final kcal = int.tryParse(_kcalCtrl.text) ?? 0;
     final protein = double.tryParse(_proteinCtrl.text) ?? 0;
     final carbs = double.tryParse(_carbsCtrl.text) ?? 0;
@@ -439,6 +444,7 @@ class _ItemFormDialogState extends State<_ItemFormDialog>
         await provider.addItem(
           name: _nameCtrl.text.trim(),
           price: price,
+          compareAtPrice: compareAtPrice,
           category: _category,
           description: _descCtrl.text,
           badge: _badge,
@@ -458,6 +464,7 @@ class _ItemFormDialogState extends State<_ItemFormDialog>
           itemId: widget.existing!.id,
           name: _nameCtrl.text.trim(),
           price: price,
+          compareAtPrice: compareAtPrice,
           description: _descCtrl.text,
           category: _category,
           badge: _badge,
@@ -550,6 +557,7 @@ class _ItemFormDialogState extends State<_ItemFormDialog>
                   _BasicTab(
                     nameCtrl: _nameCtrl,
                     priceCtrl: _priceCtrl,
+                    compareAtPriceCtrl: _compareAtPriceCtrl,
                     descCtrl: _descCtrl,
                     category: _category,
                     categories: categories,
@@ -622,7 +630,7 @@ class _ItemFormDialogState extends State<_ItemFormDialog>
 // ── Tab: Basic Info ───────────────────────────────────────────────────────────
 
 class _BasicTab extends StatelessWidget {
-  final TextEditingController nameCtrl, priceCtrl, descCtrl;
+  final TextEditingController nameCtrl, priceCtrl, compareAtPriceCtrl, descCtrl;
   final String category;
   final List<String> categories;
   final String? badge;
@@ -635,6 +643,7 @@ class _BasicTab extends StatelessWidget {
   const _BasicTab({
     required this.nameCtrl,
     required this.priceCtrl,
+    required this.compareAtPriceCtrl,
     required this.descCtrl,
     required this.category,
     required this.categories,
@@ -662,6 +671,16 @@ class _BasicTab extends StatelessWidget {
             controller: priceCtrl,
             decoration: const InputDecoration(
                 labelText: 'Price (₹)',
+                prefixText: '₹',
+                border: OutlineInputBorder()),
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: compareAtPriceCtrl,
+            decoration: const InputDecoration(
+                labelText: 'Normal price ₹',
+                helperText: 'Shows "SAVE X%"',
                 prefixText: '₹',
                 border: OutlineInputBorder()),
             keyboardType: TextInputType.number,

@@ -3,6 +3,11 @@ class MenuItem {
   final String name;
   final String description;
   final double price;
+  // The "normal" price for the same item bought without a discount — set by
+  // the admin. When higher than [price], the app shows a strikethrough
+  // anchor and an auto-computed "SAVE X%" pill (mirrors
+  // SubscriptionPlan.compareAtPrice).
+  final double compareAtPrice;
   final String category;
   final List<String> tags;
   final int kcal;
@@ -28,6 +33,7 @@ class MenuItem {
     required this.name,
     required this.description,
     required this.price,
+    this.compareAtPrice = 0,
     required this.category,
     required this.tags,
     required this.kcal,
@@ -51,12 +57,18 @@ class MenuItem {
       !available ||
       (dailyLimit != null && dailyLimit! > 0 && ordersToday >= dailyLimit!);
 
+  /// Whole-number % saved vs [compareAtPrice]; 0 when no anchor is set.
+  int get discountPercent => compareAtPrice > price && compareAtPrice > 0
+      ? (((compareAtPrice - price) / compareAtPrice) * 100).round()
+      : 0;
+
   factory MenuItem.fromJson(Map<String, dynamic> json) {
     return MenuItem(
       id: json['id'] as String,
       name: json['name'] as String,
       description: (json['description'] as String?) ?? '',
       price: (json['price'] as num).toDouble(),
+      compareAtPrice: (json['compare_at_price'] as num?)?.toDouble() ?? 0,
       category: json['category'] as String,
       tags: List<String>.from((json['tags'] as List<dynamic>?) ?? []),
       kcal: (json['kcal'] as int?) ?? 0,
@@ -84,6 +96,7 @@ class MenuItem {
         'name': name,
         'description': description,
         'price': price,
+        'compare_at_price': compareAtPrice,
         'category': category,
         'tags': tags,
         'kcal': kcal,

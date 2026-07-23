@@ -17,6 +17,7 @@ import 'pages/subscription_chef_page.dart';
 import 'pages/subscription_delivery_page.dart';
 import 'pages/subscription_meals_page.dart';
 import 'pages/subscription_settings_page.dart';
+import 'pages/gym_membership_settings_page.dart';
 
 Future<String?> _authGuard(BuildContext context, GoRouterState state) async {
   final loc = state.matchedLocation;
@@ -128,6 +129,10 @@ final router = GoRouter(
     GoRoute(
       path: '/service-hours',
       builder: (context, state) => const ServiceHoursPage(),
+    ),
+    GoRoute(
+      path: '/gym-membership-settings',
+      builder: (context, state) => const GymMembershipSettingsPage(),
     ),
     GoRoute(
       path: '/subs',

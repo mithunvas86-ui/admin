@@ -72,6 +72,7 @@ class AdminMenuProvider extends ChangeNotifier {
   Future<void> addItem({
     required String name,
     required double price,
+    double compareAtPrice = 0,
     required String category,
     String? description,
     String? badge,
@@ -98,6 +99,7 @@ class AdminMenuProvider extends ChangeNotifier {
     await SupabaseService.client.from(SupabaseService.tableMenuItems).insert({
       'name': name,
       'price': price,
+      'compare_at_price': compareAtPrice,
       'category': category,
       'description': description ?? '',
       'image_url': imageUrl,
@@ -121,6 +123,7 @@ class AdminMenuProvider extends ChangeNotifier {
     required String itemId,
     required String name,
     required double price,
+    double? compareAtPrice,
     String? description,
     String? category,
     String? badge,
@@ -139,6 +142,7 @@ class AdminMenuProvider extends ChangeNotifier {
     final updateData = <String, dynamic>{
       'name': name,
       'price': price,
+      if (compareAtPrice != null) 'compare_at_price': compareAtPrice,
       if (description != null) 'description': description,
       if (category != null) 'category': category,
       'badge': (badge != null && badge.isNotEmpty) ? badge : null,

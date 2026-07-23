@@ -223,6 +223,12 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
             const SizedBox(height: 12),
             _MenuButton(
+              label: 'GOLD MEMBERSHIP',
+              icon: Icons.workspace_premium,
+              onTap: () => context.go('/gym-membership-settings'),
+            ),
+            const SizedBox(height: 12),
+            _MenuButton(
               label: 'SUBSCRIPTIONS',
               icon: Icons.card_membership,
               onTap: () => context.go('/subs'),
