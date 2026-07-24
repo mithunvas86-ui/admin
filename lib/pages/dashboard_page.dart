@@ -239,6 +239,14 @@ class _DashboardPageState extends State<DashboardPage> {
               icon: Icons.settings,
               onTap: () => context.go('/service-hours'),
             ),
+            if (context.watch<AuthProvider>().role == 'admin') ...[
+              const SizedBox(height: 12),
+              _MenuButton(
+                label: 'STAFF ACCESS',
+                icon: Icons.admin_panel_settings,
+                onTap: () => context.go('/staff'),
+              ),
+            ],
           ],
         ),
       ),

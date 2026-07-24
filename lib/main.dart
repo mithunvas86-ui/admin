@@ -11,6 +11,7 @@ import 'providers/admin_orders_provider.dart';
 import 'providers/customer_info_provider.dart';
 import 'providers/subscription_admin_provider.dart';
 import 'providers/gym_membership_admin_provider.dart';
+import 'providers/staff_admin_provider.dart';
 import 'theme/app_theme.dart';
 import 'router.dart';
 
@@ -48,6 +49,7 @@ class MPROTIDiningAdminApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CustomerInfoProvider()),
         ChangeNotifierProvider(create: (_) => SubscriptionAdminProvider()),
         ChangeNotifierProvider(create: (_) => GymMembershipAdminProvider()),
+        ChangeNotifierProvider(create: (_) => StaffAdminProvider()),
       ],
       child: MaterialApp.router(
         title: 'Proti Bowls Admin',

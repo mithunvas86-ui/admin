@@ -53,7 +53,7 @@ class AdminGuestCustomerService {
   String exportCustomersAsCSV() {
     try {
       final customers = getAllCustomers();
-      final header = 'ID,Name,Phone,Email,Order Type,Total Spent,Created At\n';
+      const header = 'ID,Name,Phone,Email,Order Type,Total Spent,Created At\n';
       
       final rows = customers.map((c) {
         return [

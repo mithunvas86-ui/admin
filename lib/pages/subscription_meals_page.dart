@@ -299,7 +299,7 @@ class _SubscriptionMealsPageState extends State<SubscriptionMealsPage>
                       decoration:
                           const InputDecoration(labelText: 'Description')),
                   DropdownButtonFormField<String>(
-                    value: pref,
+                    initialValue: pref,
                     items: const [
                       DropdownMenuItem(
                           value: 'all', child: Text('All diets')),
@@ -449,7 +449,7 @@ class _SubscriptionMealsPageState extends State<SubscriptionMealsPage>
                   _chip(label, color),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String?>(
-                    value: scheduledMealId,
+                    initialValue: scheduledMealId,
                     hint: const Text('No dish scheduled'),
                     items: [
                       const DropdownMenuItem<String?>(

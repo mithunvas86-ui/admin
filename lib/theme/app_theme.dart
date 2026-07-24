@@ -9,7 +9,6 @@ class AppTheme {
       primary: Colors.blue.shade600,
       secondary: Colors.blue.shade400,
       surface: Colors.white,
-      background: Colors.grey.shade50,
     ),
     textTheme: GoogleFonts.chivoTextTheme(),
     appBarTheme: AppBarTheme(

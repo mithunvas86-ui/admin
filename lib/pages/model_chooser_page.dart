@@ -67,7 +67,16 @@ class ModelChooserPage extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
+                TextButton.icon(
+                  onPressed: () {
+                    adminAuth.chooseModel();
+                    context.go('/staff');
+                  },
+                  icon: const Icon(Icons.admin_panel_settings, size: 18),
+                  label: const Text('STAFF ACCESS'),
+                ),
+                const SizedBox(height: 8),
                 TextButton(
                   onPressed: () => adminAuth.logout(),
                   child: Text('LOG OUT',

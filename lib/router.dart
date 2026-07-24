@@ -18,6 +18,7 @@ import 'pages/subscription_delivery_page.dart';
 import 'pages/subscription_meals_page.dart';
 import 'pages/subscription_settings_page.dart';
 import 'pages/gym_membership_settings_page.dart';
+import 'pages/staff_page.dart';
 
 Future<String?> _authGuard(BuildContext context, GoRouterState state) async {
   final loc = state.matchedLocation;
@@ -50,7 +51,8 @@ Future<String?> _authGuard(BuildContext context, GoRouterState state) async {
     case 'gym_manager':
       // Full run of the gym/restaurant side — dashboard, orders, menu
       // (incl. pricing), analytics, customers, KDS, service hours — but
-      // not the subscription section.
+      // not the subscription section, and not staff access (admin-only).
+      if (loc == '/staff') return '/';
       return loc.startsWith('/subs') ? '/' : null;
     case 'sub_manager':
       // Subscription manager (separate credentials) — confined to the
@@ -133,6 +135,10 @@ final router = GoRouter(
     GoRoute(
       path: '/gym-membership-settings',
       builder: (context, state) => const GymMembershipSettingsPage(),
+    ),
+    GoRoute(
+      path: '/staff',
+      builder: (context, state) => const StaffPage(),
     ),
     GoRoute(
       path: '/subs',

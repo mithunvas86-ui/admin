@@ -272,7 +272,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   DropdownButtonFormField<String>(
-                    value: planId,
+                    initialValue: planId,
                     items: p.plans
                         .map((pl) => DropdownMenuItem(
                               value: pl['id'] as String,
@@ -303,7 +303,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage>
                       decoration: const InputDecoration(
                           labelText: 'Delivery address')),
                   DropdownButtonFormField<String>(
-                    value: pref,
+                    initialValue: pref,
                     items: const [
                       DropdownMenuItem(value: 'veg', child: Text('Vegetarian')),
                       DropdownMenuItem(
@@ -317,7 +317,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage>
                         const InputDecoration(labelText: 'Food preference'),
                   ),
                   DropdownButtonFormField<String>(
-                    value: goal,
+                    initialValue: goal,
                     items: const [
                       DropdownMenuItem(
                           value: 'weight_loss', child: Text('Weight loss')),
