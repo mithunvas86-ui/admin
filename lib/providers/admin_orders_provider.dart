@@ -90,6 +90,8 @@ class AdminOrdersProvider extends ChangeNotifier {
   int get completedOrders => _orders.where((o) => o['status'] == 'completed').length;
 
   double get totalSales {
-    return _orders.fold(0.0, (sum, order) => sum + (order['total_price'] ?? 0.0));
+    return _orders
+        .where((o) => o['status'] == 'completed')
+        .fold(0.0, (sum, order) => sum + (order['total_price'] ?? 0.0));
   }
 }
