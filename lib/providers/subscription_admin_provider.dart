@@ -25,9 +25,10 @@ class SubscriptionAdminProvider extends ChangeNotifier {
   List<Map<String, dynamic>> agents = [];
   List<Map<String, dynamic>> meals = []; // meal_confirmations for [kdsDate]
   List<Map<String, dynamic>> mealLibrary = []; // subscription_meals catalog
-  /// Daily menu for [kdsDate] / the schedule editor: preference → schedule row
-  /// (with joined meal). Kept in sync by fetchMeals / fetchSchedule.
-  Map<String, Map<String, dynamic>> scheduleByPref = {};
+  List<Map<String, dynamic>> groups = []; // member_groups
+  /// Daily menu for [kdsDate] / the schedule editor: preference → that day's
+  /// scheduled dish OPTIONS (with joined meal). Kept in sync by fetchSchedule.
+  Map<String, List<Map<String, dynamic>>> scheduleByPref = {};
 
   /// The date the kitchen is looking at (defaults to today).
   DateTime kdsDate = DateTime.now();
@@ -71,12 +72,11 @@ class SubscriptionAdminProvider extends ChangeNotifier {
       final rows = await _client
           .from('meal_confirmations')
           .select(
-              '*, subscriptions(customer_name,phone,food_preference,health_goal,health_notes,delivery_address,member_code, subscription_plans(name,meals_per_day)), delivery_agents(name)')
+              '*, meal_id, subscription_meals(name,description,image_url,kcal), subscriptions(customer_name,phone,food_preference,health_goal,health_notes,delivery_address,member_code, subscription_plans(name,meals_per_day)), delivery_agents(name)')
           .eq('meal_date', _d(kdsDate))
           .order('priority', ascending: false)
           .order('created_at');
       meals = (rows as List).cast<Map<String, dynamic>>();
-      await fetchSchedule(kdsDate); // dish of the day per preference (KDS)
       error = null;
     } catch (e) {
       error = 'Could not load meals: $e';
@@ -107,35 +107,152 @@ class SubscriptionAdminProvider extends ChangeNotifier {
           .from('meal_schedule')
           .select('*, subscription_meals(name,description,image_url,kcal)')
           .eq('meal_date', _d(date));
-      scheduleByPref = {
-        for (final r in (rows as List).cast<Map<String, dynamic>>())
-          (r['food_preference'] as String): r,
-      };
+      final byPref = <String, List<Map<String, dynamic>>>{};
+      for (final r in (rows as List).cast<Map<String, dynamic>>()) {
+        byPref.putIfAbsent(r['food_preference'] as String, () => []).add(r);
+      }
+      scheduleByPref = byPref;
       notifyListeners();
     } catch (_) {/* schedule is optional — KDS still works without it */}
   }
 
-  /// Assign (or clear, with null mealId) the dish for a date + preference.
-  Future<String?> setScheduledMeal(
-      DateTime date, String preference, String? mealId) async {
+  /// Add a dish to a date + preference's list of options (one of possibly
+  /// several — this is no longer a single pick).
+  Future<String?> addDishToSchedule(
+      DateTime date, String preference, String mealId) async {
     try {
-      if (mealId == null) {
-        await _client
-            .from('meal_schedule')
-            .delete()
-            .eq('meal_date', _d(date))
-            .eq('food_preference', preference);
-      } else {
-        await _client.from('meal_schedule').upsert({
-          'meal_date': _d(date),
-          'food_preference': preference,
-          'meal_id': mealId,
-        }, onConflict: 'meal_date,food_preference');
-      }
+      await _client.from('meal_schedule').insert({
+        'meal_date': _d(date),
+        'food_preference': preference,
+        'meal_id': mealId,
+      });
       await fetchSchedule(date);
       return null;
     } catch (e) {
-      return 'Could not update the menu: $e';
+      if (e.toString().contains('23505')) return null; // already on the menu
+      return 'Could not add the dish: $e';
+    }
+  }
+
+  /// Remove one dish option from a date + preference's menu.
+  Future<String?> removeDishFromSchedule(
+      DateTime date, String preference, String mealId) async {
+    try {
+      await _client
+          .from('meal_schedule')
+          .delete()
+          .eq('meal_date', _d(date))
+          .eq('food_preference', preference)
+          .eq('meal_id', mealId);
+      await fetchSchedule(date);
+      return null;
+    } catch (e) {
+      return 'Could not remove the dish: $e';
+    }
+  }
+
+  // ── Groups + per-member/group meal assignment ──────────────────────────────
+
+  Future<void> fetchGroups() async {
+    try {
+      final rows =
+          await _client.from('member_groups').select().order('name');
+      groups = (rows as List).cast<Map<String, dynamic>>();
+      notifyListeners();
+    } catch (_) {/* groups are optional to load — UI shows empty list */}
+  }
+
+  Future<String?> saveGroup(Map<String, dynamic> group) async {
+    try {
+      final data = Map<String, dynamic>.from(group);
+      final id = data.remove('id');
+      if (id == null) {
+        await _client.from('member_groups').insert(data);
+      } else {
+        await _client.from('member_groups').update(data).eq('id', id);
+      }
+      await fetchGroups();
+      return null;
+    } catch (e) {
+      return 'Could not save group: $e';
+    }
+  }
+
+  Future<void> deleteGroup(String id) async {
+    try {
+      await _client.from('member_groups').delete().eq('id', id);
+      await fetchGroups();
+    } catch (_) {}
+  }
+
+  /// Which group (if any) a member belongs to.
+  Future<void> setMemberGroup(String subscriptionId, String? groupId) async {
+    try {
+      await _client
+          .from('subscriptions')
+          .update({'group_id': groupId}).eq('id', subscriptionId);
+      await fetchSubscriptions();
+    } catch (_) {}
+  }
+
+  /// Assign a specific dish to one member for one date — overrides whatever
+  /// their group was assigned, since it's the most recent write.
+  Future<String?> assignMealToMember(
+      String subscriptionId, DateTime date, String mealId) async {
+    try {
+      await _client.from('meal_confirmations').upsert({
+        'subscription_id': subscriptionId,
+        'meal_date': _d(date),
+        'meal_id': mealId,
+      }, onConflict: 'subscription_id,meal_date');
+      return null;
+    } catch (e) {
+      return 'Could not assign the dish: $e';
+    }
+  }
+
+  /// Bulk-assign a dish to every member of a group for one date, in a single
+  /// upsert. A later individual assign for one of these members overrides it
+  /// (last write wins — there's no separate lock/priority flag).
+  Future<String?> assignMealToGroup(
+      String groupId, DateTime date, String mealId) async {
+    final memberIds = members
+        .where((m) => m['group_id'] == groupId)
+        .map((m) => m['id'] as String)
+        .toList();
+    if (memberIds.isEmpty) return 'This group has no members';
+    try {
+      final rows = memberIds
+          .map((id) => {
+                'subscription_id': id,
+                'meal_date': _d(date),
+                'meal_id': mealId,
+              })
+          .toList();
+      await _client
+          .from('meal_confirmations')
+          .upsert(rows, onConflict: 'subscription_id,meal_date');
+      return null;
+    } catch (e) {
+      return 'Could not assign the dish to the group: $e';
+    }
+  }
+
+  /// Current assignment for one member on one date (for the ASSIGN tab's
+  /// "you're overriding X" preview) — a fresh lookup, not reused from [meals],
+  /// since that's only for [kdsDate] which may differ from the picked date.
+  Future<Map<String, dynamic>?> fetchMemberAssignment(
+      String subscriptionId, DateTime date) async {
+    try {
+      final row = await _client
+          .from('meal_confirmations')
+          .select('meal_id, subscription_meals(name)')
+          .eq('subscription_id', subscriptionId)
+          .eq('meal_date', _d(date))
+          .maybeSingle();
+      return row;
+    } catch (_) {
+      return null;
     }
   }
 

@@ -23,7 +23,7 @@ class SubscriptionMealsPage extends StatefulWidget {
 
 class _SubscriptionMealsPageState extends State<SubscriptionMealsPage>
     with SingleTickerProviderStateMixin {
-  late final TabController _tabs = TabController(length: 2, vsync: this);
+  late final TabController _tabs = TabController(length: 3, vsync: this);
   DateTime _menuDate = DateTime.now().add(const Duration(days: 1));
 
   static const _prefs = [
@@ -39,6 +39,11 @@ class _SubscriptionMealsPageState extends State<SubscriptionMealsPage>
     final p = context.read<SubscriptionAdminProvider>();
     p.fetchMealLibrary();
     p.fetchSchedule(_menuDate);
+    p.fetchGroups();
+    p.fetchSubscriptions();
+    _tabs.addListener(() {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
@@ -75,6 +80,8 @@ class _SubscriptionMealsPageState extends State<SubscriptionMealsPage>
             onPressed: () {
               p.fetchMealLibrary();
               p.fetchSchedule(_menuDate);
+              p.fetchGroups();
+              p.fetchSubscriptions();
             },
           ),
         ],
@@ -86,18 +93,21 @@ class _SubscriptionMealsPageState extends State<SubscriptionMealsPage>
           tabs: [
             Tab(text: 'MEAL LIBRARY (${p.mealLibrary.length})'),
             const Tab(text: 'DAILY MENU'),
+            const Tab(text: 'ASSIGN'),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _dishDialog(),
-        icon: const Icon(Icons.add),
-        label: Text('NEW DISH',
-            style: GoogleFonts.chivo(fontWeight: FontWeight.w800)),
-      ),
+      floatingActionButton: _tabs.index == 0
+          ? FloatingActionButton.extended(
+              onPressed: () => _dishDialog(),
+              icon: const Icon(Icons.add),
+              label: Text('NEW DISH',
+                  style: GoogleFonts.chivo(fontWeight: FontWeight.w800)),
+            )
+          : null,
       body: TabBarView(
         controller: _tabs,
-        children: [_libraryTab(p), _dailyMenuTab(p)],
+        children: [_libraryTab(p), _dailyMenuTab(p), _assignTab(p)],
       ),
     );
   }
@@ -398,9 +408,8 @@ class _SubscriptionMealsPageState extends State<SubscriptionMealsPage>
             title: Text('Menu for $dateLabel',
                 style: GoogleFonts.chivo(fontWeight: FontWeight.w800)),
             subtitle: Text(
-                'Pick the dish each preference group receives on this day. '
-                'It shows on the kitchen display, the member app and the '
-                'nightly WhatsApp message ({{meal}}).',
+                'Add every dish available this day, per preference. Then use '
+                'the ASSIGN tab to give a specific one to a member or group.',
                 style: GoogleFonts.inter(fontSize: 12.5)),
             trailing: ElevatedButton(
               onPressed: () async {
@@ -423,22 +432,18 @@ class _SubscriptionMealsPageState extends State<SubscriptionMealsPage>
         const SizedBox(height: 8),
         ..._prefs.map((prefMeta) {
           final (key, label, color) = prefMeta;
-          final scheduled = p.scheduleByPref[key];
-          final scheduledMealId = scheduled?['meal_id'] as String?;
-          // Dishes suitable for this preference (its own tag, or 'all').
-          final options = p.mealLibrary
+          final scheduled = p.scheduleByPref[key] ?? const [];
+          final scheduledIds =
+              scheduled.map((r) => r['meal_id'] as String).toSet();
+          // Dishes suitable for this preference (its own tag, or 'all') not
+          // already on the day's menu — the "+ add" picker's choices.
+          final addable = p.mealLibrary
               .where((d) =>
                   d['active'] != false &&
+                  !scheduledIds.contains(d['id']) &&
                   (d['food_preference'] == key ||
                       d['food_preference'] == 'all'))
               .toList();
-          // Keep a stale selection visible so the dropdown stays valid.
-          if (scheduledMealId != null &&
-              !options.any((d) => d['id'] == scheduledMealId)) {
-            final match =
-                p.mealLibrary.where((d) => d['id'] == scheduledMealId);
-            if (match.isNotEmpty) options.add(match.first);
-          }
           return Card(
             margin: const EdgeInsets.only(bottom: 10),
             child: Padding(
@@ -447,35 +452,431 @@ class _SubscriptionMealsPageState extends State<SubscriptionMealsPage>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _chip(label, color),
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<String?>(
-                    initialValue: scheduledMealId,
-                    hint: const Text('No dish scheduled'),
-                    items: [
-                      const DropdownMenuItem<String?>(
-                          value: null, child: Text('— No dish —')),
-                      ...options.map((d) => DropdownMenuItem<String?>(
-                            value: d['id'] as String,
-                            child: Text(
-                                '${d['name']}${(d['kcal'] ?? 0) != 0 ? '  ·  ${d['kcal']} kcal' : ''}'),
-                          )),
-                    ],
-                    onChanged: (v) async {
-                      final err =
-                          await p.setScheduledMeal(_menuDate, key, v);
-                      if (err != null) _toast(err, ok: false);
-                    },
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
+                  const SizedBox(height: 10),
+                  if (scheduled.isEmpty)
+                    Text('No dishes added yet',
+                        style: GoogleFonts.inter(
+                            fontSize: 13, color: Colors.grey[600]))
+                  else
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: scheduled.map((row) {
+                        final dish =
+                            (row['subscription_meals'] as Map?)?.cast<String, dynamic>();
+                        final mealId = row['meal_id'] as String;
+                        return Chip(
+                          label: Text(dish?['name'] as String? ?? 'Dish'),
+                          backgroundColor: color.withValues(alpha: 0.12),
+                          onDeleted: () async {
+                            final err = await p.removeDishFromSchedule(
+                                _menuDate, key, mealId);
+                            if (err != null) _toast(err, ok: false);
+                          },
+                        );
+                      }).toList(),
                     ),
-                  ),
+                  const SizedBox(height: 8),
+                  if (addable.isNotEmpty)
+                    DropdownButton<String>(
+                      value: null,
+                      hint: const Text('+ Add dish'),
+                      isDense: true,
+                      items: addable
+                          .map((d) => DropdownMenuItem<String>(
+                                value: d['id'] as String,
+                                child: Text(
+                                    '${d['name']}${(d['kcal'] ?? 0) != 0 ? '  ·  ${d['kcal']} kcal' : ''}'),
+                              ))
+                          .toList(),
+                      onChanged: (v) async {
+                        if (v == null) return;
+                        final err =
+                            await p.addDishToSchedule(_menuDate, key, v);
+                        if (err != null) _toast(err, ok: false);
+                      },
+                    ),
                 ],
               ),
             ),
           );
         }),
+      ],
+    );
+  }
+
+  // ── ASSIGN ─────────────────────────────────────────────────────────────────
+
+  Widget _assignTab(SubscriptionAdminProvider p) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 90),
+      children: [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text('GROUPS',
+                        style: GoogleFonts.chivo(
+                            fontWeight: FontWeight.w800, fontSize: 13)),
+                    const Spacer(),
+                    TextButton.icon(
+                      onPressed: () => _groupDialog(),
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('NEW GROUP'),
+                    ),
+                  ],
+                ),
+                if (p.groups.isEmpty)
+                  Text('No groups yet — create one to bulk-assign dishes',
+                      style: GoogleFonts.inter(
+                          fontSize: 12.5, color: Colors.grey[600]))
+                else
+                  ...p.groups.map((g) {
+                    final count = p.members
+                        .where((m) => m['group_id'] == g['id'])
+                        .length;
+                    final prefMeta = _prefs.firstWhere(
+                        (x) => x.$1 == g['food_preference'],
+                        orElse: () => ('', '', Colors.grey));
+                    return ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(g['name'] as String? ?? ''),
+                      subtitle: Text('${prefMeta.$2} · $count member(s)'),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit, size: 18),
+                            onPressed: () => _groupDialog(group: g),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete,
+                                size: 18, color: Colors.red),
+                            onPressed: () async {
+                              final ok = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: Text('Delete "${g['name']}"?'),
+                                  content: const Text(
+                                      'Members lose this group tag; any '
+                                      'dishes already assigned to them are '
+                                      'unaffected.'),
+                                  actions: [
+                                    TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(ctx, false),
+                                        child: const Text('Cancel')),
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.red[700]),
+                                      onPressed: () =>
+                                          Navigator.pop(ctx, true),
+                                      child: const Text('DELETE'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (ok == true) {
+                                await p.deleteGroup(g['id'] as String);
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('ASSIGN TO A GROUP',
+                    style: GoogleFonts.chivo(
+                        fontWeight: FontWeight.w800, fontSize: 13)),
+                const SizedBox(height: 8),
+                _GroupAssignRow(provider: p, date: _menuDate, onToast: _toast),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('ASSIGN TO ONE MEMBER',
+                    style: GoogleFonts.chivo(
+                        fontWeight: FontWeight.w800, fontSize: 13)),
+                const SizedBox(height: 4),
+                Text('Overrides that member\'s group assignment for this day.',
+                    style:
+                        GoogleFonts.inter(fontSize: 12, color: Colors.grey[600])),
+                const SizedBox(height: 8),
+                _MemberAssignRow(provider: p, date: _menuDate, onToast: _toast),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _groupDialog({Map<String, dynamic>? group}) async {
+    final name = TextEditingController(text: group?['name'] as String? ?? '');
+    String pref = group?['food_preference'] as String? ?? 'veg';
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: Text(group == null ? 'New group' : 'Edit group'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                  controller: name,
+                  decoration: const InputDecoration(labelText: 'Group name')),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                initialValue: pref,
+                items: _prefs
+                    .map((x) => DropdownMenuItem(
+                        value: x.$1, child: Text(x.$2)))
+                    .toList(),
+                onChanged: (v) => setState(() => pref = v ?? pref),
+                decoration: const InputDecoration(labelText: 'Food preference'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel')),
+            ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('SAVE')),
+          ],
+        ),
+      ),
+    );
+    if (ok != true || !mounted) return;
+    if (name.text.trim().isEmpty) {
+      _toast('Group name is required', ok: false);
+      return;
+    }
+    final err = await context.read<SubscriptionAdminProvider>().saveGroup({
+      if (group != null) 'id': group['id'],
+      'name': name.text.trim(),
+      'food_preference': pref,
+    });
+    _toast(err ?? 'Group saved ✅', ok: err == null);
+  }
+}
+
+/// Pick a group + a dish (filtered to the group's preference) → bulk assign.
+class _GroupAssignRow extends StatefulWidget {
+  final SubscriptionAdminProvider provider;
+  final DateTime date;
+  final void Function(String, {bool ok}) onToast;
+
+  const _GroupAssignRow(
+      {required this.provider, required this.date, required this.onToast});
+
+  @override
+  State<_GroupAssignRow> createState() => _GroupAssignRowState();
+}
+
+class _GroupAssignRowState extends State<_GroupAssignRow> {
+  String? _groupId;
+  String? _mealId;
+
+  @override
+  Widget build(BuildContext context) {
+    final groups = widget.provider.groups;
+    if (groups.isEmpty) {
+      return Text('Create a group above first',
+          style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[600]));
+    }
+    final group = groups.firstWhere((g) => g['id'] == _groupId,
+        orElse: () => const {});
+    final pref = group['food_preference'] as String?;
+    final dishes = pref == null
+        ? const <Map<String, dynamic>>[]
+        : (widget.provider.scheduleByPref[pref] ?? const []);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DropdownButtonFormField<String>(
+          initialValue: _groupId,
+          hint: const Text('Pick a group'),
+          items: groups
+              .map((g) => DropdownMenuItem(
+                  value: g['id'] as String, child: Text(g['name'] as String)))
+              .toList(),
+          onChanged: (v) => setState(() {
+            _groupId = v;
+            _mealId = null;
+          }),
+          decoration: const InputDecoration(border: OutlineInputBorder()),
+        ),
+        const SizedBox(height: 8),
+        if (_groupId != null)
+          dishes.isEmpty
+              ? Text('No dishes on this day\'s menu for that preference yet',
+                  style:
+                      GoogleFonts.inter(fontSize: 12.5, color: Colors.grey[600]))
+              : DropdownButtonFormField<String>(
+                  initialValue: _mealId,
+                  hint: const Text('Pick a dish'),
+                  items: dishes
+                      .map((r) => DropdownMenuItem(
+                            value: r['meal_id'] as String,
+                            child: Text((r['subscription_meals']
+                                    as Map?)?['name'] as String? ??
+                                'Dish'),
+                          ))
+                      .toList(),
+                  onChanged: (v) => setState(() => _mealId = v),
+                  decoration: const InputDecoration(border: OutlineInputBorder()),
+                ),
+        const SizedBox(height: 8),
+        ElevatedButton(
+          onPressed: (_groupId == null || _mealId == null)
+              ? null
+              : () async {
+                  final err = await widget.provider
+                      .assignMealToGroup(_groupId!, widget.date, _mealId!);
+                  widget.onToast(err ?? 'Assigned to group ✅', ok: err == null);
+                },
+          child: const Text('ASSIGN TO GROUP'),
+        ),
+      ],
+    );
+  }
+}
+
+/// Pick a member + a dish (filtered to their preference) → individual assign.
+class _MemberAssignRow extends StatefulWidget {
+  final SubscriptionAdminProvider provider;
+  final DateTime date;
+  final void Function(String, {bool ok}) onToast;
+
+  const _MemberAssignRow(
+      {required this.provider, required this.date, required this.onToast});
+
+  @override
+  State<_MemberAssignRow> createState() => _MemberAssignRowState();
+}
+
+class _MemberAssignRowState extends State<_MemberAssignRow> {
+  String? _subscriptionId;
+  String? _mealId;
+  String? _currentDishName;
+  bool _loadingCurrent = false;
+
+  Future<void> _loadCurrent(String subscriptionId) async {
+    setState(() => _loadingCurrent = true);
+    final row =
+        await widget.provider.fetchMemberAssignment(subscriptionId, widget.date);
+    if (!mounted) return;
+    setState(() {
+      _currentDishName =
+          (row?['subscription_meals'] as Map?)?['name'] as String?;
+      _loadingCurrent = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final members = widget.provider.members;
+    if (members.isEmpty) {
+      return Text('No active members yet',
+          style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[600]));
+    }
+    final member = members.firstWhere((m) => m['id'] == _subscriptionId,
+        orElse: () => const {});
+    final pref = member['food_preference'] as String?;
+    final dishes = pref == null
+        ? const <Map<String, dynamic>>[]
+        : (widget.provider.scheduleByPref[pref] ?? const []);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DropdownButtonFormField<String>(
+          initialValue: _subscriptionId,
+          hint: const Text('Pick a member'),
+          items: members
+              .map((m) => DropdownMenuItem(
+                    value: m['id'] as String,
+                    child: Text((m['customer_name'] as String?) ?? 'Unnamed'),
+                  ))
+              .toList(),
+          onChanged: (v) {
+            setState(() {
+              _subscriptionId = v;
+              _mealId = null;
+              _currentDishName = null;
+            });
+            if (v != null) _loadCurrent(v);
+          },
+          decoration: const InputDecoration(border: OutlineInputBorder()),
+        ),
+        if (_subscriptionId != null) ...[
+          const SizedBox(height: 6),
+          Text(
+            _loadingCurrent
+                ? 'Checking current assignment…'
+                : 'Currently assigned: ${_currentDishName ?? '— none —'}',
+            style: GoogleFonts.inter(fontSize: 12, color: Colors.grey[700]),
+          ),
+        ],
+        const SizedBox(height: 8),
+        if (_subscriptionId != null)
+          dishes.isEmpty
+              ? Text('No dishes on this day\'s menu for that preference yet',
+                  style:
+                      GoogleFonts.inter(fontSize: 12.5, color: Colors.grey[600]))
+              : DropdownButtonFormField<String>(
+                  initialValue: _mealId,
+                  hint: const Text('Pick a dish'),
+                  items: dishes
+                      .map((r) => DropdownMenuItem(
+                            value: r['meal_id'] as String,
+                            child: Text((r['subscription_meals']
+                                    as Map?)?['name'] as String? ??
+                                'Dish'),
+                          ))
+                      .toList(),
+                  onChanged: (v) => setState(() => _mealId = v),
+                  decoration: const InputDecoration(border: OutlineInputBorder()),
+                ),
+        const SizedBox(height: 8),
+        ElevatedButton(
+          onPressed: (_subscriptionId == null || _mealId == null)
+              ? null
+              : () async {
+                  final err = await widget.provider.assignMealToMember(
+                      _subscriptionId!, widget.date, _mealId!);
+                  widget.onToast(err ?? 'Assigned ✅', ok: err == null);
+                  if (err == null) await _loadCurrent(_subscriptionId!);
+                },
+          child: const Text('ASSIGN TO MEMBER'),
+        ),
       ],
     );
   }

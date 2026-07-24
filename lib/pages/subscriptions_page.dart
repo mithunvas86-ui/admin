@@ -24,6 +24,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage>
     final p = context.read<SubscriptionAdminProvider>();
     p.fetchSubscriptions();
     p.fetchEditors(); // plans for the "add member" dialog
+    p.fetchGroups();
   }
 
   @override
@@ -486,6 +487,40 @@ class _SubCard extends StatelessWidget {
                     style: GoogleFonts.inter(
                         fontSize: 12, color: Colors.grey[600])),
               ),
+            if (!isPending) ...[
+              const SizedBox(height: 8),
+              Builder(builder: (context) {
+                final p = context.watch<SubscriptionAdminProvider>();
+                final matchingGroups = p.groups
+                    .where((g) => g['food_preference'] == sub['food_preference'])
+                    .toList();
+                return SizedBox(
+                  width: 220,
+                  child: DropdownButtonFormField<String?>(
+                    initialValue: sub['group_id'] as String?,
+                    isDense: true,
+                    hint: const Text('No group'),
+                    items: [
+                      const DropdownMenuItem<String?>(
+                          value: null, child: Text('— No group —')),
+                      ...matchingGroups.map((g) => DropdownMenuItem<String?>(
+                            value: g['id'] as String,
+                            child: Text(g['name'] as String),
+                          )),
+                    ],
+                    onChanged: (v) => context
+                        .read<SubscriptionAdminProvider>()
+                        .setMemberGroup(sub['id'] as String, v),
+                    decoration: const InputDecoration(
+                      labelText: 'Group',
+                      isDense: true,
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    ),
+                  ),
+                );
+              }),
+            ],
             const SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,

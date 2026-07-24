@@ -171,13 +171,11 @@ class _SubscriptionChefPageState extends State<SubscriptionChefPage> {
                 spacing: 8,
                 runSpacing: 4,
                 children: byPref.entries.map((e) {
-                  final p = context.read<SubscriptionAdminProvider>();
-                  final dish = (p.scheduleByPref[e.key]?['subscription_meals']
-                          as Map?)?['name'] as String?;
+                  // Members can each have a different assigned dish now, so
+                  // there's no single "the dish" for a preference — count only.
                   final label = e.key.replaceAll('_', '-').toUpperCase();
                   return Chip(
-                    label: Text(
-                        '$label × ${e.value}${dish != null ? '  ·  $dish' : ''}',
+                    label: Text('$label × ${e.value}',
                         style: GoogleFonts.chivo(
                             fontSize: 11, fontWeight: FontWeight.w800)),
                     visualDensity: VisualDensity.compact,
@@ -201,9 +199,9 @@ class _SubscriptionChefPageState extends State<SubscriptionChefPage> {
     final goal =
         ((sub['health_goal'] ?? '') as String).replaceAll('_', ' ').toUpperCase();
     final notes = (sub['health_notes'] ?? '') as String;
-    // Today's scheduled dish for this member's preference (Meal Planner).
-    final dish = (p.scheduleByPref[prefKey]?['subscription_meals'] as Map?)
-        ?.cast<String, dynamic>();
+    // This member's own assigned dish (Meal Planner → ASSIGN tab), not a
+    // shared per-preference default — each member can have a different one.
+    final dish = (m['subscription_meals'] as Map?)?.cast<String, dynamic>();
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
