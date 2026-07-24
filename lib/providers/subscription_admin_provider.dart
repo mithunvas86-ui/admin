@@ -495,15 +495,20 @@ class SubscriptionAdminProvider extends ChangeNotifier {
       if (data['ok'] == true) {
         final sent = data['sent'] ?? 0;
         final failed = data['failed'] ?? 0;
+        final noPhone = data['skippedNoPhone'] ?? 0;
         final n = data['members'] ?? 0;
         final cfg = data['configured'] == true;
         if (!cfg) {
           return 'Meal rows created for $n members, but WhatsApp is NOT configured yet.';
         }
         final lastError = data['lastError']?.toString();
-        return failed > 0 && lastError != null
-            ? 'Done — $sent of $n messaged, $failed failed: $lastError'
-            : 'Done — $sent of $n members messaged.';
+        final suffix = [
+          if (failed > 0 && lastError != null) '$failed failed: $lastError',
+          if (noPhone > 0) '$noPhone with no phone on file',
+        ].join(', ');
+        return suffix.isEmpty
+            ? 'Done — $sent of $n members messaged.'
+            : 'Done — $sent of $n messaged, $suffix';
       }
       return data['error']?.toString() ?? 'Job failed';
     } catch (e) {
